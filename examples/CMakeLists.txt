@@ -1,0 +1,2 @@
+add_executable(vector_add_example vector_add/main.cpp)
+target_link_libraries(vector_add_example PRIVATE directamd_runtime)
