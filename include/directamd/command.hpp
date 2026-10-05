@@ -18,6 +18,9 @@ public:
     // Appends PM4 PACKET3_SET_SH_REG
     void add_set_sh_reg(uint32_t reg_offset, const std::vector<uint32_t>& values);
 
+    // Appends PM4 PACKET3_ACQUIRE_MEM (Cache invalidate & flush)
+    void add_acquire_mem(uint32_t engine = 0);
+
     // Appends PM4 PACKET3_DISPATCH_DIRECT
     void add_dispatch_direct(uint32_t gx, uint32_t gy, uint32_t gz, uint32_t dispatch_initiator = 1);
 

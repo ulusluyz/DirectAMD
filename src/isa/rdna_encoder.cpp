@@ -25,19 +25,60 @@ uint32_t RDNAEncoder::encode_vop2(uint8_t op, uint8_t vdst, uint8_t src0, uint8_
            (static_cast<uint32_t>(src0) & 0x1FF);
 }
 
+uint32_t RDNAEncoder::encode_sopp_waitcnt(uint16_t vmcnt, uint16_t lgkmcnt) {
+    // S_WAITCNT: OP = 0x0C in SOPP
+    // Bit field simm16: [3:0]=vmcnt, [13:8]=lgkmcnt
+    uint16_t simm16 = (vmcnt & 0x0F) | ((lgkmcnt & 0x3F) << 8);
+    return encode_sopp(0x0C, simm16);
+}
+
+void RDNAEncoder::emit_global_load_dword(std::vector<uint32_t>& code, uint8_t vdst, uint8_t vaddr, uint8_t sbase) {
+    // GLOBAL_LOAD_DWORD (RDNA 64-bit encoding)
+    // Word 0: [31:26]=110111, [25:18]=OP, [17:16]=0, [15:8]=SBASE, [7:0]=VDST
+    // Word 1: [31:0]=VADDR & offset
+    uint32_t word0 = (0b110111U << 26) | (0x14U << 18) | ((static_cast<uint32_t>(sbase) & 0xFF) << 8) | (vdst & 0xFF);
+    uint32_t word1 = (static_cast<uint32_t>(vaddr) & 0xFF);
+    code.push_back(word0);
+    code.push_back(word1);
+}
+
+void RDNAEncoder::emit_global_store_dword(std::vector<uint32_t>& code, uint8_t vaddr, uint8_t vdata, uint8_t sbase) {
+    // GLOBAL_STORE_DWORD (RDNA 64-bit encoding)
+    // Word 0: [31:26]=110111, [25:18]=OP (0x1C for store_dword), [15:8]=SBASE, [7:0]=VDATA
+    // Word 1: [31:0]=VADDR & offset
+    uint32_t word0 = (0b110111U << 26) | (0x1CU << 18) | ((static_cast<uint32_t>(sbase) & 0xFF) << 8) | (vdata & 0xFF);
+    uint32_t word1 = (static_cast<uint32_t>(vaddr) & 0xFF);
+    code.push_back(word0);
+    code.push_back(word1);
+}
+
 std::vector<uint32_t> RDNAEncoder::emit_vector_add_kernel() {
     std::vector<uint32_t> code;
 
-    // 1. S_NOP 0
-    code.push_back(encode_sopp(0, 0));
+    // 1. Calculate byte offset = v0 * 4 bytes (v_lshlrev_b32 v1, 2, v0)
+    // OP 0x14 = V_LSHLREV_B32
+    code.push_back(encode_vop2(0x14, 1, 128 + 2 /* literal inline 2 */, 0 /* v0 */));
 
-    // 2. V_ADD_F32 v0, v0, v1 (Opcode 0x03 on RDNA)
-    code.push_back(encode_vop2(0x03, 0, 0, 1));
+    // 2. Load A[i] -> v2 (global_load_dword v2, v1, s[0:1])
+    emit_global_load_dword(code, 2, 1, 0);
 
-    // 3. S_NOP 0
-    code.push_back(encode_sopp(0, 0));
+    // 3. Load B[i] -> v3 (global_load_dword v3, v1, s[2:3])
+    emit_global_load_dword(code, 3, 1, 2);
 
-    // 4. S_ENDPGM
+    // 4. Wait for vector memory reads to complete: s_waitcnt vmcnt(0)
+    code.push_back(encode_sopp_waitcnt(0, 0));
+
+    // 5. Add FP32: v4 = v2 + v3 (v_add_f32 v4, v2, v3)
+    // OP 0x03 = V_ADD_F32
+    code.push_back(encode_vop2(0x03, 4, 2, 3));
+
+    // 6. Store C[i] <- v4 (global_store_dword v1, v4, s[4:5])
+    emit_global_store_dword(code, 1, 4, 4);
+
+    // 7. Wait for store: s_waitcnt vmcnt(0)
+    code.push_back(encode_sopp_waitcnt(0, 0));
+
+    // 8. Terminate wavefront
     code.push_back(SOPP_S_ENDPGM);
 
     return code;

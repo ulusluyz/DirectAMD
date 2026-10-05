@@ -14,8 +14,8 @@ int main() {
     std::cout << "          DirectAMD Vector-Add Prototype            \n";
     std::cout << "====================================================\n";
 
-    // 1. CPU Reference Implementation
-    const size_t N = 4;
+    // 1. CPU Reference Data
+    const uint32_t N = 4;
     std::vector<float> h_A = {1.0f, 2.0f, 3.0f, 4.0f};
     std::vector<float> h_B = {5.0f, 6.0f, 7.0f, 8.0f};
     std::vector<float> h_C_expected = {6.0f, 8.0f, 10.0f, 12.0f};
@@ -52,7 +52,7 @@ int main() {
         return 1;
     }
 
-    // 4. Memory Allocations (VRAM / GTT)
+    // 4. Memory Allocations (GTT/VRAM)
     DirectAMD::VAManager va_mgr;
     size_t size_bytes = N * sizeof(float);
 
@@ -68,7 +68,7 @@ int main() {
     bo_A->copy_to_gpu(h_A.data(), size_bytes, ec);
     bo_B->copy_to_gpu(h_B.data(), size_bytes, ec);
 
-    // 5. ISA Machine Code Assembly (Internal Zero-Dependency C++ Encoder)
+    // 5. ISA Machine Code Assembly
     auto kernel_code = DirectAMD::ISA::RDNAEncoder::emit_vector_add_kernel();
     size_t code_bytes = kernel_code.size() * sizeof(uint32_t);
 
@@ -77,11 +77,37 @@ int main() {
 
     // 6. PM4 Packet Builder
     DirectAMD::PM4Builder pm4;
+    pm4.add_acquire_mem();
+
+    // Set Kernel Program Address (COMPUTE_PGM_LO/HI: 0x2E0C / 0x2E0D)
+    uint64_t code_va = bo_code->get_gpu_va();
     pm4.add_set_sh_reg(0x2E0C, {
-        static_cast<uint32_t>(bo_code->get_gpu_va() >> 8),
-        static_cast<uint32_t>(bo_code->get_gpu_va() >> 40)
+        static_cast<uint32_t>(code_va >> 8),
+        static_cast<uint32_t>(code_va >> 40)
     });
+
+    // Set User SGPRs (COMPUTE_USER_DATA_0: 0x2E40)
+    // s[0:1]=A_va, s[2:3]=B_va, s[4:5]=C_va, s6=N
+    uint64_t va_a = bo_A->get_gpu_va();
+    uint64_t va_b = bo_B->get_gpu_va();
+    uint64_t va_c = bo_C->get_gpu_va();
+
+    pm4.add_set_sh_reg(0x2E40, {
+        static_cast<uint32_t>(va_a & 0xFFFFFFFF),
+        static_cast<uint32_t>(va_a >> 32),
+        static_cast<uint32_t>(va_b & 0xFFFFFFFF),
+        static_cast<uint32_t>(va_b >> 32),
+        static_cast<uint32_t>(va_c & 0xFFFFFFFF),
+        static_cast<uint32_t>(va_c >> 32),
+        N
+    });
+
+    // Set Threads per Workgroup: COMPUTE_NUM_THREAD_X/Y/Z (0x2E07)
+    pm4.add_set_sh_reg(0x2E07, {64, 1, 1});
+
+    // Dispatch Grid (1 workgroup)
     pm4.add_dispatch_direct(1, 1, 1);
+    pm4.add_acquire_mem();
 
     auto bo_ib = DirectAMD::BufferObject::create(*device, va_mgr, pm4.get_size_bytes(), 0x2, ec);
     bo_ib->copy_to_gpu(pm4.get_packets().data(), pm4.get_size_bytes(), ec);

@@ -8,12 +8,24 @@ uint32_t PM4Builder::build_type3_header(uint8_t opcode, uint16_t count) {
 }
 
 void PM4Builder::add_set_sh_reg(uint32_t reg_offset, const std::vector<uint32_t>& values) {
+    if (values.empty()) return;
     uint16_t count = static_cast<uint16_t>(values.size());
     packets_.push_back(build_type3_header(0x76, count)); // 0x76 = PACKET3_SET_SH_REG
     packets_.push_back(reg_offset & 0xFFFF);
     for (uint32_t v : values) {
         packets_.push_back(v);
     }
+}
+
+void PM4Builder::add_acquire_mem(uint32_t engine) {
+    // PACKET3_ACQUIRE_MEM (0x58): Cache flush & invalidation
+    packets_.push_back(build_type3_header(0x58, 6));
+    packets_.push_back(engine);     // Engine
+    packets_.push_back(0xFFFFFFFF); // Coherence bytes low
+    packets_.push_back(0xFF);       // Coherence bytes high
+    packets_.push_back(0);          // Base address low
+    packets_.push_back(0);          // Base address high
+    packets_.push_back(0x0000000A); // CP_COHER_CNTL (L1/L2 Invalidate)
 }
 
 void PM4Builder::add_dispatch_direct(uint32_t gx, uint32_t gy, uint32_t gz, uint32_t dispatch_initiator) {
