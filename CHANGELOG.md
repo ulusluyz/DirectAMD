@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+- Fixed the AMDGPU CS chunk address layout, indirect-buffer length and
+  fence deadline.
+- Added the Polaris 10 wave64 vector-add kernel and GFX8 PM4 dispatch.
+  The example accepts a render-node path for per-card validation.
+- Verified direct FP32 vector addition on the Radeon RX 570 and RX 580 and
+  recorded the separate host and hardware results in the
+  [validation report](docs/FINAL_VALIDATION_REPORT.md).
+
 ## [0.1.0] - 2026-10-05
 
 ### Added

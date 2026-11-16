@@ -13,7 +13,7 @@ AMD CP command streams consist of dword (32-bit) packets.
 ```
 31         30 29             16 15              8 7               0
 ┌────────────┬─────────────────┬─────────────────┬─────────────────┐
-│ Header Type│  Count (dwords) │     IT_OPCODE   │    Predicate    │
+│ Header Type│  Count (dwords) │     IT_OPCODE   │  Control bits   │
 │   (2 bits) │    (14 bits)    │     (8 bits)    │    (8 bits)     │
 └────────────┴─────────────────┴─────────────────┴─────────────────┘
 ```
@@ -33,26 +33,35 @@ AMD CP command streams consist of dword (32-bit) packets.
 
 ---
 
-## 3. Register Configuration Packet Sequence
+## 3. Polaris Compute Register Configuration
 
-Prior to dispatching a compute wavefront grid, key registers are configured using `PACKET3_SET_SH_REG`:
+The builder takes shader register addresses in dwords. `SET_SH_REG`
+stores the address relative to the shader register base, `0x2C00`.
+The header count is the number of payload dwords minus one.
 
-1. **Kernel Program Base Address:**
-   - `COMPUTE_PGM_LO` (`0x2E0C`): Lower 32 bits of GPU Virtual Address divided by 256.
-   - `COMPUTE_PGM_HI` (`0x2E0D`): Upper 32 bits of GPU Virtual Address.
-2. **Resource SGPR Inputs (User SGPRs):**
-   - `COMPUTE_USER_DATA_0` .. `COMPUTE_USER_DATA_15` (`0x2E40`+): Base addresses of memory buffers (A, B, C) and scalar parameters.
-3. **Workgroup Dimensions:**
-   - `COMPUTE_PGM_RSRC1` / `COMPUTE_PGM_RSRC2`: Register counts (VGPR/SGPR reservation), LDS size per workgroup.
-   - `COMPUTE_NUM_THREAD_X/Y/Z`: Threads per workgroup block (e.g., 64 x 1 x 1).
+The dispatch sets the program address with `COMPUTE_PGM_LO/HI` from the
+256-byte-aligned GPU address shifted right by eight bits. It configures
+64 threads in X, register allocation in `COMPUTE_PGM_RSRC1/2`, and
+seven user SGPRs followed by workgroup ID X. The seven user SGPRs hold
+three 64-bit buffer addresses and the element count.
 
----
+`DISPATCH_DIRECT` carries four dwords and sets the compute shader type
+bit. The grid contains one X workgroup per 64 elements, rounded up.
+Single-dword NOP packets pad the indirect buffer to eight dwords.
 
 ## 4. Submission via `DRM_IOCTL_AMDGPU_CS`
 
-Command submission chunks (`struct drm_amdgpu_cs_chunk`) are populated:
+DirectAMD creates a BO list with `DRM_IOCTL_AMDGPU_BO_LIST` containing
+the indirect buffer, kernel code, and A, B and C buffers. The
+`AMDGPU_CHUNK_ID_IB` payload specifies the indirect buffer GPU virtual
+address, the actual PM4 byte count including NOP padding, and the
+compute IP and ring. The unused bytes in the GEM allocation stay
+outside the submitted IB.
 
-1. **IB Chunk (`AMDGPU_CHUNK_ID_IB`):** Contains pointer to command buffer BO, offset, and payload size.
-2. **BO List Chunk (`AMDGPU_CHUNK_ID_BO_HANDLES`):** List of GEM handles (kernel code BO, buffer A, buffer B, buffer C) required for memory validation by the Linux kernel scheduler (`amdgpu_cs`).
-
-The kernel driver submits the indirect buffer to the hardware ring (`AMDGPU_HW_IP_COMPUTE`), returning a 64-bit sequence fence number used to await execution completion via `DRM_IOCTL_AMDGPU_WAIT_CS`.
+The CS request's `chunks` field points to an array of 64-bit userspace
+addresses, with one address per `drm_amdgpu_cs_chunk`. Passing the chunk
+struct address directly causes the driver to interpret its header as
+an address and return `EFAULT`. After submission, the userspace BO-list
+handle is released. The resulting 64-bit fence sequence is passed to
+`DRM_IOCTL_AMDGPU_WAIT_CS` with an absolute `CLOCK_MONOTONIC` deadline
+before reading the output.

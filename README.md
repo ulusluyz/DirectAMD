@@ -48,13 +48,14 @@ AMD GPU Hardware (Compute Ring / CUs)
   - GEM Buffer Object VRAM/GTT Manager & 48-bit Virtual Address Manager implemented.
   - PM4 Compute Dispatch Command Packet Builder implemented.
   - CPU Reference Vector-Add and Test Suite validated.
-* **Hardware Execution Status:** `MILESTONE 1: NOT TESTED — PHYSICAL AMD GPU REQUIRED` (Sandbox lacks `/dev/dri/renderD*` device node).
+* **Hardware execution:** Direct DRM FP32 vector addition passed on the Radeon RX 570 and RX 580 (Polaris 10 / GCN4 / `gfx803`). All five CTest host tests passed in the same build. See the [validation report](docs/FINAL_VALIDATION_REPORT.md).
 
 ---
 
 ## Supported Hardware
+* **Polaris 10 (GCN4 / gfx803):** Direct DRM vector-add example.
 * **RDNA2 (GFX1030 / Navi 21, 22, 23):** Primary initial ISA research target.
-* **RDNA3 (GFX1100 / Navi 31, 32, 33):** Supported via instruction encoding pipeline.
+* **RDNA3 (GFX1100 / Navi 31, 32, 33):** ISA research target.
 * **GCN5 / Vega:** Experimental.
 
 ---
@@ -73,7 +74,7 @@ AMD GPU Hardware (Compute Ring / CUs)
 mkdir -p build && cd build
 
 # Configure with CMake
-cmake ..
+cmake -DCMAKE_BUILD_TYPE=Debug -DENABLE_WERROR=ON ..
 
 # Build binary targets
 cmake --build . -j$(nproc)
@@ -85,11 +86,17 @@ ctest --output-on-failure
 ---
 
 ## Running Examples
-To run the vector-add example:
+Run the vector-add example from the repository root after building into `build/`.
+An optional render-node path selects a specific GPU.
+
 ```bash
-./examples/vector_add/vector_add_example
+./build/examples/vector_add_example /dev/dri/renderD128
 ```
-*If physical AMD GPU device node `/dev/dri/renderD128` is present, it will attempt direct GPU command submission. Otherwise, it safely logs `NOT TESTED — PHYSICAL AMD GPU REQUIRED` and runs CPU validation.*
+
+The example checks the readback for 4-element and 257-element vectors and verifies
+that lanes beyond the end of each vector leave the output guard values intact.
+An unavailable device or a failed dispatch or readback returns a nonzero exit
+status. Run `ctest --test-dir build --output-on-failure` for the host-side tests.
 
 ---
 
@@ -106,6 +113,7 @@ Comprehensive technical documentation is located in `docs/`:
 * [ROADMAP.md](docs/ROADMAP.md)
 * [TESTING.md](docs/TESTING.md)
 * [BENCHMARKING.md](docs/BENCHMARKING.md)
+* [HARDWARE_VALIDATION.md](docs/HARDWARE_VALIDATION.md)
 * [FINAL_VALIDATION_REPORT.md](docs/FINAL_VALIDATION_REPORT.md)
 
 ---

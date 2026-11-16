@@ -15,14 +15,16 @@ class PM4Builder {
 public:
     static uint32_t build_type3_header(uint8_t opcode, uint16_t count);
 
-    // Appends PM4 PACKET3_SET_SH_REG
-    void add_set_sh_reg(uint32_t reg_offset, const std::vector<uint32_t>& values);
+    // Appends PM4 PACKET3_SET_SH_REG using a shader register dword address.
+    void add_set_sh_reg(uint32_t register_address, const std::vector<uint32_t>& values);
 
     // Appends PM4 PACKET3_ACQUIRE_MEM (Cache invalidate & flush)
-    void add_acquire_mem(uint32_t engine = 0);
+    void add_acquire_mem(uint32_t coherence_control = 0x28c40000);
 
     // Appends PM4 PACKET3_DISPATCH_DIRECT
     void add_dispatch_direct(uint32_t gx, uint32_t gy, uint32_t gz, uint32_t dispatch_initiator = 1);
+
+    void add_polaris_vector_add(uint64_t program_va, const VectorAddKernelParams& params);
 
     const std::vector<uint32_t>& get_packets() const noexcept { return packets_; }
     size_t get_size_bytes() const noexcept { return packets_.size() * sizeof(uint32_t); }

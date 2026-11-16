@@ -1,34 +1,26 @@
-# DirectAMD Testing Policy & Execution Guide
+# DirectAMD Testing
 
-## Policy Architecture
+## CPU and host tests
 
-DirectAMD maintains strict testing policies:
-
-1. **Anti-Fake Validation Rule:**
-   - Under no circumstances will CPU reference execution or emulation be reported as GPU execution.
-   - When running without a physical AMD GPU (`/dev/dri/renderD*`), GPU command submission tests MUST be reported as:
-     `SKIPPED — PHYSICAL AMD GPU REQUIRED`
-   - Overall hardware milestone status MUST be reported as:
-     `MILESTONE 1: NOT TESTED — PHYSICAL AMD GPU REQUIRED`
-
-2. **CPU & Structural Testing:**
-   - All host-side software components—device node discovery parser, memory manager bookkeeping, ISA machine code bitfield serialization, PM4 packet generators, and CPU reference math functions—MUST be thoroughly tested and validated on CPU in all build environments.
-
----
-
-## Running Tests
-
-### Standard Build and Unit Test Suite Execution
 ```bash
-mkdir -p build && cd build
-cmake ..
-cmake --build .
-ctest --output-on-failure
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DENABLE_WERROR=ON
+cmake --build build --parallel
+ctest --test-dir build --output-on-failure
 ```
 
-### Test Suite Structure
-* `tests/test_device.cpp`: Tests DRM render node scanner and architecture matching.
-* `tests/test_memory.cpp`: Tests GEM allocation tracking, memory limits, and RAII destruction semantics.
-* `tests/test_isa.cpp`: Tests ISA bitfield encoding correctness against known opcode specifications.
-* `tests/test_command.cpp`: Tests PM4 packet header and payload construction.
-* `tests/test_vector_add.cpp`: Tests CPU math reference and hardware submission checks.
+| Test | Coverage |
+| --- | --- |
+| `test_device` | Render-node enumeration and AMDGPU device queries when a node is available |
+| `test_memory` | Host-side GPU virtual-address allocation and alignment |
+| `test_isa` | Instruction bit patterns and kernel termination |
+| `test_command` | PM4 headers, shader register addressing, dispatch dimensions and IB padding |
+| `test_vector_add` | CPU reference arithmetic |
+
+## Physical GPU tests
+
+Run the example separately for each card as described in
+[Hardware Validation](HARDWARE_VALIDATION.md). A GPU pass requires
+successful DRM submission, a completed fence, and verified GPU readback.
+Report CPU results and physical GPU results separately. If hardware is
+unavailable, mark GPU execution as untested. See the
+[validation report](FINAL_VALIDATION_REPORT.md) for the observed results.

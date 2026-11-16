@@ -12,6 +12,12 @@ namespace ISA {
 constexpr uint32_t SOPP_S_NOP    = 0xBF800000;
 constexpr uint32_t SOPP_S_ENDPGM = 0xBF810000;
 
+class PolarisEncoder {
+public:
+    static constexpr uint32_t wave_size = 64;
+    static std::vector<uint32_t> emit_vector_add_kernel();
+};
+
 class RDNAEncoder {
 public:
     static uint32_t encode_sopp(uint16_t op, uint16_t simm16 = 0);

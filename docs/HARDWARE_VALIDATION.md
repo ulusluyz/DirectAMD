@@ -1,91 +1,47 @@
-# DirectAMD Physical Hardware Validation Procedure
+# DirectAMD Physical GPU Validation
 
-## Overview
-This document specifies the step-by-step physical hardware validation procedure for DirectAMD Milestone 1.
+The direct DRM vector-add example targets Polaris 10 (GCN4 / `gfx803`,
+PCI ID `1002:67df`). Use a Linux system with the `amdgpu` driver and
+read/write access to the GPU's DRM render node.
 
----
+## Build and run host tests
 
-## 1. Prerequisites & Environment Setup
-
-### Hardware Requirements
-* Physical AMD GPU (RDNA2 GFX1030 / Navi 21/22/23 or RDNA3 GFX1100 / Navi 31/32/33).
-* Host system connected via PCIe.
-
-### Operating System & Driver Requirements
-* Linux OS (Kernel >= 5.4 with active `amdgpu` driver).
-* User added to `render` and `video` groups to access `/dev/dri/renderD128`:
-  ```bash
-  sudo usermod -aG render,video $USER
-  ```
-
-### Diagnostic Commands
-Before running DirectAMD, verify that the kernel exposes a valid DRM render node:
-```bash
-ls -l /dev/dri/renderD*
-# Expected output: /dev/dri/renderD128
-
-dmesg | grep -i amdgpu
-# Expected output: [drm] amdgpu kernel driver initialized
-```
-
----
-
-## 2. Compilation
-Build DirectAMD with standard compiler flags (-Wall -Wextra -Wpedantic -Werror):
+From the repository root:
 
 ```bash
-mkdir -p build && cd build
-cmake -DCMAKE_BUILD_TYPE=Release -DENABLE_WERROR=ON ..
-cmake --build . --parallel $(nproc)
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DENABLE_WERROR=ON
+cmake --build build --parallel
+ctest --test-dir build --output-on-failure
 ```
 
----
+Debug keeps the host-test assertions enabled.
 
-## 3. Running Physical Vector-Add Validation
+## Select each physical card
 
-Execute the compiled vector-add example:
 ```bash
-./examples/vector_add_example
+lspci -nnk -d 1002:67df
+ls -l /dev/dri/by-path/*-render
 ```
 
-### Expected Hardware Success Output
-When running on physical hardware with `/dev/dri/renderD128`:
-```
-====================================================
-          DirectAMD Vector-Add Prototype
-====================================================
-[+] Host Input Vector A: [1, 2, 3, 4]
-[+] Host Input Vector B: [5, 6, 7, 8]
-[+] AMD GPU Found at: /dev/dri/renderD128
-[+] Architecture: RDNA2/RDNA3
-MILESTONE 1: PASS
+Pass one render node per invocation. For the two cards in the
+[validation report](FINAL_VALIDATION_REPORT.md):
+
+```bash
+./build/examples/vector_add_example /dev/dri/by-path/pci-0000:0a:00.0-render
+./build/examples/vector_add_example /dev/dri/by-path/pci-0000:0b:00.0-render
 ```
 
-### Expected Output in Non-Hardware Environments
-When running in environments lacking physical AMD GPUs:
-```
-====================================================
-          DirectAMD Vector-Add Prototype
-====================================================
-[+] Host Input Vector A: [1, 2, 3, 4]
-[+] Host Input Vector B: [5, 6, 7, 8]
+Use your system's PCI addresses. To capture direct DRM calls for a run,
+replace the PCI path in this example and resolve it to the render node:
 
-----------------------------------------------------
-PHYSICAL GPU DETECTED: NO (/dev/dri/renderD* missing)
-STATUS: MILESTONE 1: NOT TESTED — PHYSICAL AMD GPU REQUIRED
-----------------------------------------------------
-[+] Verifying CPU Reference Math:
-    C[0] = 6 (Expected: 6)
-    C[1] = 8 (Expected: 8)
-    C[2] = 10 (Expected: 10)
-    C[3] = 12 (Expected: 12)
-CPU REFERENCE PASS
+```bash
+node=$(readlink -f /dev/dri/by-path/pci-0000:0a:00.0-render)
+strace -yy -e trace=ioctl -P "$node" ./build/examples/vector_add_example "$node"
 ```
 
----
-
-## 4. Hardware Milestone PASS / FAIL Criteria
-
-* **MILESTONE 1: PASS:** Requires `vector_add_example` to execute on a physical AMD GPU via DRM ioctls and produce $C = [6.0, 8.0, 10.0, 12.0]$ matching host reference values.
-* **MILESTONE 1: FAIL:** Occurs if `DRM_IOCTL_AMDGPU_CS` returns submission errors, fence timeout occurs, or readback values mismatch.
-* **MILESTONE 1: NOT TESTED — PHYSICAL AMD GPU REQUIRED:** Reported when `/dev/dri/renderD*` is missing.
+A successful run reports both GPU vector-add cases and exits 0. It checks
+the 4-element output `[6, 8, 10, 12]`, every element of the 257-element
+output, and the sentinel values in the padded output slots. The trace
+should show successful command submission and fence waits on the selected
+node. A submission, fence, or readback failure returns nonzero. If there
+is no usable render node, record hardware execution as untested.

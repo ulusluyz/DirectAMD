@@ -8,8 +8,8 @@
 #include <drm/amdgpu_drm.h>
 
 #include <filesystem>
-#include <iostream>
-#include <cstring>
+#include <algorithm>
+#include <cerrno>
 
 namespace DirectAMD {
 
@@ -42,6 +42,7 @@ std::vector<std::string> Device::scan_render_nodes() {
             nodes.push_back(entry.path().string());
         }
     }
+    std::sort(nodes.begin(), nodes.end());
     return nodes;
 }
 
@@ -60,14 +61,13 @@ std::unique_ptr<Device> Device::open_first_available(std::error_code& ec) {
         }
     }
 
-    ec = make_error_code(ErrorCode::DEVICE_NOT_FOUND);
     return nullptr;
 }
 
 std::unique_ptr<Device> Device::open_path(const std::string& path, std::error_code& ec) {
     int fd = open(path.c_str(), O_RDWR | O_CLOEXEC);
     if (fd < 0) {
-        ec = make_error_code(ErrorCode::DRM_ERROR);
+        ec = std::error_code(errno, std::generic_category());
         return nullptr;
     }
 
@@ -82,13 +82,25 @@ std::unique_ptr<Device> Device::open_path(const std::string& path, std::error_co
     dev_info_cmd.return_size = sizeof(dev_info);
     dev_info_cmd.query = AMDGPU_INFO_DEV_INFO;
 
-    if (ioctl(fd, DRM_IOCTL_AMDGPU_INFO, &dev_info_cmd) == 0) {
-        props.pci_device_id = dev_info.device_id;
-        props.pci_revision_id = dev_info.pci_rev;
-        props.asic_family = dev_info.family;
-        props.num_compute_units = dev_info.cu_active_number;
-        props.arch_family = map_asic_family_to_arch(dev_info.family);
-        props.arch_name = (props.arch_family == ArchitectureFamily::RDNA2) ? "RDNA2/RDNA3" : "GCN/Unknown";
+    if (ioctl(fd, DRM_IOCTL_AMDGPU_INFO, &dev_info_cmd) < 0) {
+        ec = std::error_code(errno, std::generic_category());
+        close(fd);
+        return nullptr;
+    }
+
+    props.pci_vendor_id = 0x1002;
+    props.pci_device_id = dev_info.device_id;
+    props.pci_revision_id = dev_info.pci_rev;
+    props.asic_family = dev_info.family;
+    props.num_compute_units = dev_info.cu_active_number;
+    props.wave_front_size = dev_info.wave_front_size;
+    props.arch_family = map_asic_family_to_arch(dev_info.family);
+    props.arch_name = (props.arch_family == ArchitectureFamily::RDNA2) ? "RDNA2/RDNA3" : "GCN/Unknown";
+
+    // Ellesmere/Polaris 10 variants of the RX 470 through RX 590 share this ID.
+    if (dev_info.family == AMDGPU_FAMILY_VI && dev_info.device_id == 0x67df) {
+        props.arch_family = ArchitectureFamily::GCN4_POLARIS;
+        props.arch_name = "Polaris / GCN4 (gfx803)";
     }
 
     // Query VRAM & GTT sizes via AMDGPU_INFO_VRAM_GTT

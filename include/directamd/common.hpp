@@ -18,7 +18,8 @@ enum class ArchitectureFamily {
     RDNA3,
     CDNA1,
     CDNA2,
-    CDNA3
+    CDNA3,
+    GCN4_POLARIS
 };
 
 struct DeviceProperties {

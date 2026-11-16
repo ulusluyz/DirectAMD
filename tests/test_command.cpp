@@ -15,6 +15,25 @@ int main() {
     // Check Type 3 Header bits [31:30] == 0b11
     assert((packets[0] >> 30) == 0b11);
 
+    assert(packets[0] == 0xC0027600);
+    assert(packets[1] == 0x20C);
+    assert(packets[4] == 0xC0031502);
+
+    DirectAMD::PM4Builder polaris;
+    polaris.add_polaris_vector_add(0x100003000ULL, {
+        0x100000000ULL, 0x100001000ULL, 0x100002000ULL, 257
+    });
+    const auto& dispatch = polaris.get_packets();
+    assert(dispatch.size() == 40);
+    assert(dispatch[10] == 0xC0027600);
+    assert(dispatch[11] == 0x20C);
+    assert(dispatch[12] == 0x01000030);
+    assert(dispatch[32] == 257);
+    assert(dispatch[33] == 0xC0031502);
+    assert(dispatch[34] == 5);
+    assert(dispatch[38] == 0xFFFF1000);
+    assert(dispatch[39] == 0xFFFF1000);
+
     std::cout << "[+] Serialized " << packets.size() << " dwords of PM4 compute packets.\n";
     std::cout << "[PASS] PM4 Packet Builder Test Completed.\n";
     return 0;

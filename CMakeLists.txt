@@ -34,6 +34,7 @@ add_library(directamd_runtime STATIC
     src/memory/va_manager.cpp
     src/memory/buffer_object.cpp
     src/isa/rdna_encoder.cpp
+    src/isa/polaris_encoder.cpp
     src/command/pm4_builder.cpp
     src/command/command_submission.cpp
 )

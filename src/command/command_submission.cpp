@@ -2,6 +2,9 @@
 #include "directamd/device.hpp"
 #include "directamd/memory.hpp"
 
+#include <cerrno>
+#include <limits>
+#include <time.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
 #include <drm/drm.h>
@@ -16,6 +19,13 @@ uint64_t CommandSubmission::submit_compute(Device& device, uint32_t ctx_id,
     int fd = device.get_fd();
     if (fd < 0) {
         ec = make_error_code(ErrorCode::DEVICE_NOT_FOUND);
+        return 0;
+    }
+
+    const size_t ib_bytes = ib_bo.get_requested_size();
+    if (ib_bytes == 0 || ib_bytes > std::numeric_limits<uint32_t>::max() ||
+        ib_bytes % sizeof(uint32_t) != 0) {
+        ec = std::make_error_code(std::errc::invalid_argument);
         return 0;
     }
 
@@ -45,7 +55,7 @@ uint64_t CommandSubmission::submit_compute(Device& device, uint32_t ctx_id,
     bo_list_args.in.bo_info_ptr = reinterpret_cast<uint64_t>(bo_entries.data());
 
     if (ioctl(fd, DRM_IOCTL_AMDGPU_BO_LIST, &bo_list_args) < 0) {
-        ec = make_error_code(ErrorCode::COMMAND_SUBMISSION_FAILED);
+        ec = std::error_code(errno, std::generic_category());
         return 0;
     }
 
@@ -54,11 +64,11 @@ uint64_t CommandSubmission::submit_compute(Device& device, uint32_t ctx_id,
     // 2. Prepare Indirect Buffer chunk
     struct drm_amdgpu_cs_chunk_ib ib_chunk_data{};
     ib_chunk_data.va_start = ib_bo.get_gpu_va();
-    ib_chunk_data.ib_bytes = ib_bo.get_size();
+    ib_chunk_data.ib_bytes = static_cast<uint32_t>(ib_bytes);
     ib_chunk_data.ip_type = AMDGPU_HW_IP_COMPUTE;
     ib_chunk_data.ip_instance = 0;
     ib_chunk_data.ring = 0;
-    ib_chunk_data.flags = 0;
+    ib_chunk_data.flags = AMDGPU_IB_FLAG_EMIT_MEM_SYNC;
 
     struct drm_amdgpu_cs_chunk chunk{};
     chunk.chunk_id = AMDGPU_CHUNK_ID_IB;
@@ -69,10 +79,20 @@ uint64_t CommandSubmission::submit_compute(Device& device, uint32_t ctx_id,
     cs_args.in.ctx_id = ctx_id;
     cs_args.in.bo_list_handle = bo_list_handle;
     cs_args.in.num_chunks = 1;
-    cs_args.in.chunks = reinterpret_cast<uint64_t>(&chunk);
+    // DRM expects an array of userspace addresses, one per chunk.
+    uint64_t chunk_addresses[] = {reinterpret_cast<uint64_t>(&chunk)};
+    cs_args.in.chunks = reinterpret_cast<uint64_t>(chunk_addresses);
 
-    if (ioctl(fd, DRM_IOCTL_AMDGPU_CS, &cs_args) < 0) {
-        ec = make_error_code(ErrorCode::COMMAND_SUBMISSION_FAILED);
+    const int result = ioctl(fd, DRM_IOCTL_AMDGPU_CS, &cs_args);
+    const int submission_errno = result < 0 ? errno : 0;
+
+    union drm_amdgpu_bo_list destroy_list{};
+    destroy_list.in.operation = AMDGPU_BO_LIST_OP_DESTROY;
+    destroy_list.in.list_handle = bo_list_handle;
+    ioctl(fd, DRM_IOCTL_AMDGPU_BO_LIST, &destroy_list);
+
+    if (result < 0) {
+        ec = std::error_code(submission_errno, std::generic_category());
         return 0;
     }
 
@@ -88,21 +108,34 @@ bool CommandSubmission::wait_fence(Device& device, uint32_t ctx_id, uint64_t fen
         return false;
     }
 
+    // WAIT_CS takes an absolute CLOCK_MONOTONIC deadline in nanoseconds.
+    struct timespec now{};
+    if (clock_gettime(CLOCK_MONOTONIC, &now) < 0) {
+        ec = std::error_code(errno, std::generic_category());
+        return false;
+    }
+    const uint64_t now_ns = static_cast<uint64_t>(now.tv_sec) * 1000000000ULL + now.tv_nsec;
+    const uint64_t max_timeout = std::numeric_limits<int64_t>::max();
+
     union drm_amdgpu_wait_cs wait_args{};
     wait_args.in.handle = fence_handle;
-    wait_args.in.timeout = timeout_ns;
+    wait_args.in.timeout = timeout_ns > max_timeout - now_ns ? max_timeout : now_ns + timeout_ns;
     wait_args.in.ip_type = AMDGPU_HW_IP_COMPUTE;
     wait_args.in.ip_instance = 0;
     wait_args.in.ring = 0;
     wait_args.in.ctx_id = ctx_id;
 
     if (ioctl(fd, DRM_IOCTL_AMDGPU_WAIT_CS, &wait_args) < 0) {
+        ec = std::error_code(errno, std::generic_category());
+        return false;
+    }
+    if (wait_args.out.status != 0) {
         ec = make_error_code(ErrorCode::GPU_TIMEOUT);
         return false;
     }
 
     ec.clear();
-    return (wait_args.out.status == 0);
+    return true;
 }
 
 } // namespace DirectAMD

@@ -37,6 +37,7 @@ public:
 
     uint32_t get_handle() const noexcept { return gem_handle_; }
     size_t get_size() const noexcept { return size_bytes_; }
+    size_t get_requested_size() const noexcept { return requested_size_bytes_; }
     uint64_t get_gpu_va() const noexcept { return gpu_va_; }
     void* get_cpu_ptr() const noexcept { return cpu_ptr_; }
 
@@ -45,12 +46,13 @@ public:
 
 private:
     BufferObject(Device& device, VAManager& va_mgr, uint32_t handle, size_t size_bytes,
-                 uint64_t gpu_va, void* cpu_ptr);
+                 size_t requested_size_bytes, uint64_t gpu_va, void* cpu_ptr);
 
     Device& device_;
     VAManager& va_mgr_;
     uint32_t gem_handle_{0};
     size_t size_bytes_{0};
+    size_t requested_size_bytes_{0};
     uint64_t gpu_va_{0};
     void* cpu_ptr_{nullptr};
 };

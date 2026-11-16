@@ -51,7 +51,7 @@ Example: `S_ENDPGM` (`0xBF810000`) terminating shader wave execution.
 
 ---
 
-## 3. Minimal Vector-Add Compute Kernel (FP32)
+## 3. RDNA Vector-Add Research Sketch (FP32)
 
 A simple vector-add kernel ($C[i] = A[i] + B[i]$) in raw RDNA ISA contains:
 
@@ -72,7 +72,19 @@ A simple vector-add kernel ($C[i] = A[i] + B[i]$) in raw RDNA ISA contains:
 
 ---
 
-## 4. Architecture Justification Summary
+## 4. Polaris Vector-Add Kernel (gfx803)
+
+`PolarisEncoder::emit_vector_add_kernel` provides the wave64 code exercised
+by the hardware example. User SGPR pairs `s[0:1]`, `s[2:3]`, and
+`s[4:5]` hold the A, B, and C addresses. `s6` holds the element count,
+`s7` receives workgroup X, and `v0` receives local X. The kernel computes
+the index as `workgroup_x * 64 + local_x` and masks lanes at or beyond
+the element count. It forms 64-bit addresses with explicit carry,
+performs GFX8 flat loads, adds with `v_add_f32`, and stores the result
+with a flat store. Wait instructions order memory operations before
+arithmetic and wave termination.
+
+## 5. Architecture Justification Summary
 
 * **RDNA2 (GFX1030) / RDNA3 (GFX1100)**: Clean VOP2/VOP3 encoding scheme, standard 32-bit Wavefront dispatch, well-documented PM4 headers (`COMPUTE_PGM_LO/HI`, `USER_SGPR_MSB`).
-* DirectAMD implements `src/isa/rdna/rdna_encoder.cpp` as an internal, header-backed C++ instruction synthesizer producing machine code vectors without spawning sub-processes or invoking LLVM/ROCm.
+* DirectAMD implements `src/isa/rdna_encoder.cpp` as an internal, header-backed C++ instruction synthesizer producing machine code vectors without spawning sub-processes or invoking LLVM/ROCm.

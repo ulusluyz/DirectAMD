@@ -72,13 +72,14 @@ std::unique_ptr<BufferObject> BufferObject::create(Device& device, VAManager& va
 
     ec.clear();
     return std::unique_ptr<BufferObject>(
-        new BufferObject(device, va_mgr, handle, page_aligned_size, gpu_va, cpu_ptr));
+        new BufferObject(device, va_mgr, handle, page_aligned_size, size_bytes, gpu_va, cpu_ptr));
 }
 
 BufferObject::BufferObject(Device& device, VAManager& va_mgr, uint32_t handle,
-                           size_t size_bytes, uint64_t gpu_va, void* cpu_ptr)
+                           size_t size_bytes, size_t requested_size_bytes,
+                           uint64_t gpu_va, void* cpu_ptr)
     : device_(device), va_mgr_(va_mgr), gem_handle_(handle), size_bytes_(size_bytes),
-      gpu_va_(gpu_va), cpu_ptr_(cpu_ptr) {}
+      requested_size_bytes_(requested_size_bytes), gpu_va_(gpu_va), cpu_ptr_(cpu_ptr) {}
 
 BufferObject::~BufferObject() {
     int fd = device_.get_fd();
