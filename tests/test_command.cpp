@@ -34,6 +34,53 @@ int main() {
     assert(dispatch[38] == 0xFFFF1000);
     assert(dispatch[39] == 0xFFFF1000);
 
+    static_assert(DirectAMD::GemvKernelParams::valid_shape(1, 1u << 30));
+    static_assert(!DirectAMD::GemvKernelParams::valid_shape(65536, 65536));
+    static_assert(!DirectAMD::GemvKernelParams::valid_shape(0, 5));
+    static_assert(!DirectAMD::GemvKernelParams::valid_shape(5, 0));
+
+    DirectAMD::PM4Builder gemv;
+    gemv.add_polaris_gemv(0x100003000ULL, {
+        0x100000000ULL, 0x100001100ULL, 0x100002100ULL, 65, 129
+    });
+    const auto& gemv_dispatch = gemv.get_packets();
+    assert(gemv_dispatch.size() == 40);
+    assert(gemv_dispatch[16] == 0xC0042); // 12 VGPRs, 16 SGPRs, FP mode
+    assert(gemv_dispatch[17] == 0x90); // Eight user SGPRs and group ID X
+    assert(gemv_dispatch[24] == 0xC0087600);
+    assert(gemv_dispatch[28] == 0x1100);
+    assert(gemv_dispatch[30] == 0x2100);
+    assert(gemv_dispatch[32] == 65);
+    assert(gemv_dispatch[33] == 129);
+    assert(gemv_dispatch[34] == 0xC0031502);
+    assert(gemv_dispatch[35] == 2);
+    assert(gemv_dispatch[39] == 0xFFFF1000);
+
+    static_assert(DirectAMD::GemmKernelParams::valid_shape(65, 129, 33));
+    static_assert(!DirectAMD::GemmKernelParams::valid_shape(0, 129, 33));
+    static_assert(!DirectAMD::GemmKernelParams::valid_shape(65, 0, 33));
+    static_assert(!DirectAMD::GemmKernelParams::valid_shape(65, 129, 0));
+    static_assert(!DirectAMD::GemmKernelParams::valid_shape(65536, 1, 65536));
+    static_assert(!DirectAMD::GemmKernelParams::valid_shape(1, 65536, 65536));
+    static_assert(!DirectAMD::GemmKernelParams::valid_shape(65536, 65536, 1));
+
+    DirectAMD::PM4Builder gemm;
+    gemm.add_polaris_gemm(0x100003000ULL, {
+        0x100000000ULL, 0x100001100ULL, 0x100002100ULL, 65, 129, 33
+    });
+    const auto& gemm_dispatch = gemm.get_packets();
+    assert(gemm_dispatch.size() == 40);
+    assert(gemm_dispatch[16] == 0xC0042);
+    assert(gemm_dispatch[17] == 0x192); // Nine user SGPRs and group IDs X/Y
+    assert(gemm_dispatch[24] == 0xC0097600);
+    assert(gemm_dispatch[32] == 65);
+    assert(gemm_dispatch[33] == 129);
+    assert(gemm_dispatch[34] == 33);
+    assert(gemm_dispatch[35] == 0xC0031502);
+    assert(gemm_dispatch[36] == 3);
+    assert(gemm_dispatch[37] == 65);
+    assert(gemm_dispatch[38] == 1);
+
     std::cout << "[+] Serialized " << packets.size() << " dwords of PM4 compute packets.\n";
     std::cout << "[PASS] PM4 Packet Builder Test Completed.\n";
     return 0;

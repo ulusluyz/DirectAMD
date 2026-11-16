@@ -46,6 +46,36 @@ struct VectorAddKernelParams {
     uint32_t count{0};
 };
 
+struct GemvKernelParams {
+    uint64_t matrix_va{0};
+    uint64_t vector_va{0};
+    uint64_t output_va{0};
+    uint32_t rows{0};
+    uint32_t columns{0};
+
+    // The kernel uses 32-bit byte offsets within the contiguous row-major matrix.
+    static constexpr uint64_t max_elements = uint64_t{1} << 30;
+    static constexpr bool valid_shape(uint64_t rows, uint64_t columns) noexcept {
+        return rows != 0 && columns != 0 && rows <= max_elements / columns;
+    }
+};
+
+struct GemmKernelParams {
+    uint64_t a_va{0};
+    uint64_t b_va{0};
+    uint64_t c_va{0};
+    uint32_t rows{0};
+    uint32_t columns{0};
+    uint32_t inner{0};
+
+    static constexpr bool valid_shape(uint64_t rows, uint64_t columns, uint64_t inner) noexcept {
+        // Every matrix must fit the kernel's unsigned 32-bit byte offsets.
+        return GemvKernelParams::valid_shape(rows, inner) &&
+               GemvKernelParams::valid_shape(inner, columns) &&
+               GemvKernelParams::valid_shape(rows, columns);
+    }
+};
+
 } // namespace DirectAMD
 
 #endif // DIRECTAMD_COMMON_HPP

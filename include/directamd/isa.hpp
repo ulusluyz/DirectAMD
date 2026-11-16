@@ -16,6 +16,8 @@ class PolarisEncoder {
 public:
     static constexpr uint32_t wave_size = 64;
     static std::vector<uint32_t> emit_vector_add_kernel();
+    static std::vector<uint32_t> emit_gemv_kernel();
+    static std::vector<uint32_t> emit_gemm_kernel();
 };
 
 class RDNAEncoder {

@@ -30,6 +30,8 @@ include_directories(
 # Core Runtime Library
 add_library(directamd_runtime STATIC
     src/runtime/error.cpp
+    src/math/gemv.cpp
+    src/math/gemm.cpp
     src/device/device_discovery.cpp
     src/memory/va_manager.cpp
     src/memory/buffer_object.cpp

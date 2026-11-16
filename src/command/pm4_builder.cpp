@@ -41,16 +41,54 @@ void PM4Builder::add_dispatch_direct(uint32_t gx, uint32_t gy, uint32_t gz, uint
 }
 
 void PM4Builder::add_polaris_vector_add(uint64_t program_va, const VectorAddKernelParams& params) {
-    constexpr uint32_t wave_size = ISA::PolarisEncoder::wave_size;
-    constexpr uint32_t rsrc1 = (1u << 0) | (1u << 6) | (0xc0u << 12); // 8 VGPRs, 16 SGPRs, FP mode
-    constexpr uint32_t rsrc2 = (7u << 1) | (1u << 7); // 7 user SGPRs, workgroup ID X
-    constexpr uint32_t ib_alignment_dw = 8;
-    constexpr uint32_t nop = 0xffff1000; // Single-dword PACKET3_NOP
-
     // The kernel computes each byte offset in a single 32-bit VGPR.
     if (params.count == 0 || params.count > (1u << 30) || program_va % 256 != 0) {
         throw std::invalid_argument("Invalid Polaris vector-add dispatch");
     }
+
+    add_polaris_dispatch(program_va, params.count, 2, {
+        static_cast<uint32_t>(params.buffer_a_va), static_cast<uint32_t>(params.buffer_a_va >> 32),
+        static_cast<uint32_t>(params.buffer_b_va), static_cast<uint32_t>(params.buffer_b_va >> 32),
+        static_cast<uint32_t>(params.buffer_c_va), static_cast<uint32_t>(params.buffer_c_va >> 32),
+        params.count
+    });
+}
+
+void PM4Builder::add_polaris_gemv(uint64_t program_va, const GemvKernelParams& params) {
+    if (!GemvKernelParams::valid_shape(params.rows, params.columns) || program_va % 256 != 0) {
+        throw std::invalid_argument("Invalid Polaris GEMV dispatch");
+    }
+
+    add_polaris_dispatch(program_va, params.rows, 3, {
+        static_cast<uint32_t>(params.matrix_va), static_cast<uint32_t>(params.matrix_va >> 32),
+        static_cast<uint32_t>(params.vector_va), static_cast<uint32_t>(params.vector_va >> 32),
+        static_cast<uint32_t>(params.output_va), static_cast<uint32_t>(params.output_va >> 32),
+        params.rows, params.columns
+    });
+}
+
+void PM4Builder::add_polaris_gemm(uint64_t program_va, const GemmKernelParams& params) {
+    if (!GemmKernelParams::valid_shape(params.rows, params.columns, params.inner) ||
+        program_va % 256 != 0) {
+        throw std::invalid_argument("Invalid Polaris GEMM dispatch");
+    }
+
+    add_polaris_dispatch(program_va, params.columns, 3, {
+        static_cast<uint32_t>(params.a_va), static_cast<uint32_t>(params.a_va >> 32),
+        static_cast<uint32_t>(params.b_va), static_cast<uint32_t>(params.b_va >> 32),
+        static_cast<uint32_t>(params.c_va), static_cast<uint32_t>(params.c_va >> 32),
+        params.rows, params.columns, params.inner
+    }, params.rows);
+}
+
+void PM4Builder::add_polaris_dispatch(uint64_t program_va, uint32_t items_x, uint32_t vgpr_blocks,
+                                     const std::vector<uint32_t>& user_data, uint32_t groups_y) {
+    constexpr uint32_t wave_size = ISA::PolarisEncoder::wave_size;
+    constexpr uint32_t ib_alignment_dw = 8;
+    constexpr uint32_t nop = 0xffff1000; // Single-dword PACKET3_NOP
+    const uint32_t rsrc1 = (vgpr_blocks - 1) | (1u << 6) | (0xc0u << 12); // 16 SGPRs, FP mode
+    uint32_t rsrc2 = (static_cast<uint32_t>(user_data.size()) << 1) | (1u << 7); // Workgroup ID X
+    if (groups_y != 0) rsrc2 |= 1u << 8; // Workgroup ID Y for the 2D grid
 
     add_set_sh_reg(0x2E04, {0, 0, 0}); // COMPUTE_START_X/Y/Z
     add_set_sh_reg(0x2E07, {wave_size, 1, 1}); // COMPUTE_NUM_THREAD_X/Y/Z
@@ -59,14 +97,9 @@ void PM4Builder::add_polaris_vector_add(uint64_t program_va, const VectorAddKern
     add_set_sh_reg(0x2E12, {rsrc1, rsrc2}); // COMPUTE_PGM_RSRC1/2
     add_set_sh_reg(0x2E15, {0}); // COMPUTE_RESOURCE_LIMITS
     add_set_sh_reg(0x2E18, {0}); // COMPUTE_TMPRING_SIZE, no scratch
-    add_set_sh_reg(0x2E40, {
-        static_cast<uint32_t>(params.buffer_a_va), static_cast<uint32_t>(params.buffer_a_va >> 32),
-        static_cast<uint32_t>(params.buffer_b_va), static_cast<uint32_t>(params.buffer_b_va >> 32),
-        static_cast<uint32_t>(params.buffer_c_va), static_cast<uint32_t>(params.buffer_c_va >> 32),
-        params.count
-    });
-    const uint32_t groups = (static_cast<uint64_t>(params.count) + wave_size - 1) / wave_size;
-    add_dispatch_direct(groups, 1, 1);
+    add_set_sh_reg(0x2E40, user_data);
+    const uint32_t groups_x = (static_cast<uint64_t>(items_x) + wave_size - 1) / wave_size;
+    add_dispatch_direct(groups_x, groups_y == 0 ? 1 : groups_y, 1);
     const size_t padding = (ib_alignment_dw - packets_.size() % ib_alignment_dw) % ib_alignment_dw;
     packets_.insert(packets_.end(), padding, nop);
 }

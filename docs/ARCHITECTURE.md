@@ -60,10 +60,22 @@ DirectAMD is an experimental, standalone C++20 low-level runtime designed for di
 
 ### 4. ISA Subsystem (`src/isa/`)
 * Generates raw GPU machine instructions directly in C++.
-* Modular architecture:
-  * `src/isa/common/`: Common instruction traits and register definitions.
-  * `src/isa/rdna/`: RDNA2 / RDNA3 binary instruction synthesizer.
-  * `src/isa/gcn/`: GCN/Vega instruction synthesizer interface.
+* `src/isa/polaris_encoder.cpp` provides the validated wave64 vector-add,
+  GEMV and GEMM kernels for `gfx803`.
+* `src/isa/rdna_encoder.cpp` contains the RDNA instruction research code.
+
+### 5. FP32 Matrix Operations (`src/math/`)
+* `gemv_fp32` and `gemm_fp32` accept contiguous row-major inputs. They check
+  positive dimensions, span lengths and the kernel's 32-bit byte-offset
+  limits before allocating or submitting buffers.
+* The shared Polaris path stages inputs and output in host-visible GTT
+  BOs. It submits the code and indirect buffer to the selected device,
+  waits for the compute fence and checks output sentinels before copying
+  the result to the caller.
+* GEMV assigns one row per lane. GEMM uses a two-dimensional grid in
+  which workgroup Y selects the row and the wave's X lanes select output
+  columns. The GEMM kernel masks partial waves. Both kernels iterate the
+  reduction dimension with separate FP32 multiply and add instructions.
 
 ---
 

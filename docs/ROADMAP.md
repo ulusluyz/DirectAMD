@@ -2,7 +2,7 @@
 
 ## Roadmap Stages
 
-### Stage 1: Feasibility & Foundation (Current Milestone)
+### Stage 1: Feasibility & Foundation
 - [x] AMDGPU DRM / UAPI Technical Feasibility Research
 - [x] Low-level Linux DRM UAPI Kernel Interface Specification
 - [x] AMD GPU ISA & PM4 Command Buffer Research
@@ -14,14 +14,15 @@
 - [x] Vector-Add Prototype (`examples/vector_add/`)
 - [x] Unit Test Suite & Hardware Validation Reporting (`tests/`)
 
-### Stage 2: Physical Hardware Validation (Upon AMD Hardware Availability)
-- [ ] Physical AMD GPU Hardware Vector-Add Kernel Submission
-- [ ] Sequence Fence Synchronization & Verification
+### Stage 2: Physical Hardware Validation
+- [x] Physical AMD GPU vector-add submission on RX 570 and RX 580
+- [x] Compute fence synchronization and GPU readback verification
 - [ ] Evaluation & Performance Logging
 
 ### Stage 3: Tensor Operations Subsystem
 - [ ] Elementwise Vector Multiplication & Reduction
-- [ ] FP32 GEMV / GEMM Matrix Multiplication Kernels
+- [x] FP32 GEMV on Polaris 10, verified on RX 570 and RX 580
+- [x] FP32 GEMM on Polaris 10, verified on RX 570 and RX 580
 - [ ] RMSNorm, Softmax, RoPE, SiLU Compute Kernels
 
 ### Stage 4: Transformer LLM Inference Subsystem

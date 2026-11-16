@@ -25,11 +25,16 @@ public:
     void add_dispatch_direct(uint32_t gx, uint32_t gy, uint32_t gz, uint32_t dispatch_initiator = 1);
 
     void add_polaris_vector_add(uint64_t program_va, const VectorAddKernelParams& params);
+    void add_polaris_gemv(uint64_t program_va, const GemvKernelParams& params);
+    void add_polaris_gemm(uint64_t program_va, const GemmKernelParams& params);
 
     const std::vector<uint32_t>& get_packets() const noexcept { return packets_; }
     size_t get_size_bytes() const noexcept { return packets_.size() * sizeof(uint32_t); }
 
 private:
+    void add_polaris_dispatch(uint64_t program_va, uint32_t items_x, uint32_t vgpr_blocks,
+                              const std::vector<uint32_t>& user_data, uint32_t groups_y = 0);
+
     std::vector<uint32_t> packets_;
 };
 

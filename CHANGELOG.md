@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   recorded the separate host and hardware results in the
   [validation report](docs/FINAL_VALIDATION_REPORT.md).
 
+- Added row-major FP32 GEMV and GEMM APIs and per-device examples for
+  Polaris 10. Both use guarded GPU readback through the existing DRM path.
+- Revalidated vector add, GEMV and GEMM on the Radeon RX 570 and RX 580.
+
 ## [0.1.0] - 2026-10-05
 
 ### Added

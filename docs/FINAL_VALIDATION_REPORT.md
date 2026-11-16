@@ -1,9 +1,9 @@
 # DirectAMD Polaris Validation Report
 
-Validated on 2026-11-16, 22:24 TRT, on Debian 13.7 x86-64 with Linux
-`6.12.115+deb13.1-amd64` and the kernel `amdgpu` driver. Built with
-GCC 14.2.0, CMake 3.31.6 and Ninja 1.12.1 in Debug mode with
-`ENABLE_WERROR=ON`. Debug keeps the CTest assertions enabled.
+Revalidated on 2026-11-16 at 23:05 TRT on Debian 13.7 x86-64 with Linux
+`6.12.115+deb13.1-amd64` and the kernel `amdgpu` driver. The local build
+used GCC 14.2.0, CMake 3.31.6 and Ninja 1.12.1 in Debug mode with
+`ENABLE_WERROR=ON`, keeping the CTest assertions enabled.
 
 ## CPU and host tests
 
@@ -14,40 +14,50 @@ All five registered CTest tests ran and passed. No tests were skipped.
 | `test_device` | Pass | Found two DRM render nodes and opened an AMDGPU node |
 | `test_memory` | Pass | Virtual address allocation and alignment |
 | `test_isa` | Pass | Host-side instruction encoding and termination |
-| `test_command` | Pass | PM4 headers, Polaris dispatch fields and IB padding |
+| `test_command` | Pass | PM4 headers, Polaris dispatch fields, shape bounds and IB alignment |
 | `test_vector_add` | Pass | CPU reference output `[6, 8, 10, 12]` |
 
 ## Physical GPU tests
 
-Each row represents three independent invocations of `vector_add_example`
-with the indicated render node. Both cards have PCI ID `1002:67df` and
-use the Polaris / GCN4 (`gfx803`) wave64 path.
+Each example was invoked three independent times per selected render node.
+Both cards have PCI ID `1002:67df` and use Polaris / GCN4 (`gfx803`)
+wave64 kernels. Counts below are completed GPU cases compared against CPU
+references. Each case uses one command submission and one fence wait.
 
-| Card | PCI address | Render node | Runs passed | GPU submissions completed |
-| --- | --- | --- | --- | --- |
-| Radeon RX 580, 36 CUs | `0000:0a:00.0` | `/dev/dri/renderD128` | 3/3 | 6/6 |
-| Radeon RX 570, 32 CUs | `0000:0b:00.0` | `/dev/dri/renderD129` | 3/3 | 6/6 |
+| Hardware | PCI address | Render node | Vector add (2 cases/run) | GEMV (9 cases/run) | GEMM (10 cases/run) |
+| --- | --- | --- | ---: | ---: | ---: |
+| Radeon RX 580, 36 CUs | `0000:0a:00.0` | `/dev/dri/renderD128` | 6/6 | 27/27 | 30/30 |
+| Radeon RX 570, 32 CUs | `0000:0b:00.0` | `/dev/dri/renderD129` | 6/6 | 27/27 | 30/30 |
 
-In every run, GPU readback produced `[6, 8, 10, 12]` for the four-element
-FP32 case and matched the CPU reference at all 257 positions in the
-five-workgroup case. The output sentinels remained intact in all 60 and
-63 padded positions, respectively. All six invocations exited with
-status 0. Device-filtered `strace` recorded 12 successful
-`DRM_IOCTL_AMDGPU_CS` calls and 12 successful `DRM_IOCTL_AMDGPU_WAIT_CS`
-calls. An explicit nonexistent render-node path returned exit status 1.
+All 18 invocations exited with status 0. Device-filtered `strace`
+recorded 126 successful `DRM_IOCTL_AMDGPU_CS` calls and 126 successful
+`DRM_IOCTL_AMDGPU_WAIT_CS` calls, 63 of each per GPU. Each example
+returned exit status 1 for an explicitly nonexistent render node.
 
-The hardware runs use the Linux AMDGPU DRM ioctls and the C++ runtime.
-They exercise device discovery, context creation, GEM buffers, GPU
-virtual addressing, compute submission, fences, and GPU result readback.
-The scope is the Polaris FP32 vector-add example on these two cards.
-RDNA and Vega hardware execution were outside this run.
+### Numerical and buffer checks
 
-## Reproduction
+| Workload | Sizes covered | CPU comparison |
+| --- | --- | --- |
+| Vector add | 4 and 257 elements | Exact in both cases, including the four-element result `[6, 8, 10, 12]` |
+| GEMV, rows × columns | `1×1`, `3×5`, `63×17`, `64×64`, `65×129`, `127×1`, `257×73`, `1×4097`, `513×1025` | Exact in eight cases. Maximum absolute error `1.32076e-6` for fractional `65×129` |
+| GEMM, M × N × K | `1×1×1`, `1×129×5`, `3×5×7`, `7×1×257`, `31×63×65`, `64×64×64`, `65×67×17`, `17×129×33`, `129×65×97`, `67×130×259` | Exact in nine cases. Maximum absolute error `2.06223e-7` for fractional `17×129×33` |
+
+The matrix examples compare every output to a double-precision CPU
+reference. The fractional cases use the elementwise bound
+`1e-5 + 2e-5 * abs(reference)`. The vector-add output padding and the
+GEMV/GEMM GPU and host output sentinels stayed intact. The GEMV example
+rejected a short matrix and GEMM rejected short A, B and C spans. The
+successful submission counts account only for valid cases.
+
+## Scope and reproduction
+
+These results cover direct Linux AMDGPU DRM execution on the listed
+cards. They exercise device discovery, GEM allocation and mapping,
+compute submission, fences and readback for vector add, GEMV and GEMM.
+RDNA and Vega hardware execution and other operations are outside this
+validation.
 
 Follow the [hardware validation procedure](HARDWARE_VALIDATION.md) to
-build, run CTest, and select each GPU by its PCI render-node path.
-
-The earlier Milestone 1 environment (Linux 6.8.0, GCC 13.3.0 and
-CMake 3.28.3) passed the build and host tests. It had no DRM render nodes,
-so command submission and fence synchronization were skipped in that
-environment.
+reproduce the build, CTest run and per-card tests. The earlier Milestone
+1 environment had no DRM render nodes and exercised the build and host
+tests.
