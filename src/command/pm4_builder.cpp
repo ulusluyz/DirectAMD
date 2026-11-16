@@ -81,12 +81,27 @@ void PM4Builder::add_polaris_gemm(uint64_t program_va, const GemmKernelParams& p
     }, params.rows);
 }
 
+void PM4Builder::add_polaris_softmax(uint64_t program_va, const SoftmaxKernelParams& params) {
+    if (!SoftmaxKernelParams::valid_count(params.count) || program_va % 256 != 0) {
+        throw std::invalid_argument("Invalid Polaris Softmax dispatch");
+    }
+
+    // The wave loops over the full vector. Enable FP32 subnormal inputs and outputs.
+    constexpr uint32_t preserve_denormals_mode = 0xf0;
+    add_polaris_dispatch(program_va, ISA::PolarisEncoder::wave_size, 3, {
+        static_cast<uint32_t>(params.input_va), static_cast<uint32_t>(params.input_va >> 32),
+        static_cast<uint32_t>(params.output_va), static_cast<uint32_t>(params.output_va >> 32),
+        params.count
+    }, 0, preserve_denormals_mode);
+}
+
 void PM4Builder::add_polaris_dispatch(uint64_t program_va, uint32_t items_x, uint32_t vgpr_blocks,
-                                     const std::vector<uint32_t>& user_data, uint32_t groups_y) {
+                                     const std::vector<uint32_t>& user_data, uint32_t groups_y,
+                                     uint32_t float_mode) {
     constexpr uint32_t wave_size = ISA::PolarisEncoder::wave_size;
     constexpr uint32_t ib_alignment_dw = 8;
     constexpr uint32_t nop = 0xffff1000; // Single-dword PACKET3_NOP
-    const uint32_t rsrc1 = (vgpr_blocks - 1) | (1u << 6) | (0xc0u << 12); // 16 SGPRs, FP mode
+    const uint32_t rsrc1 = (vgpr_blocks - 1) | (1u << 6) | (float_mode << 12); // 16 SGPRs, FP mode
     uint32_t rsrc2 = (static_cast<uint32_t>(user_data.size()) << 1) | (1u << 7); // Workgroup ID X
     if (groups_y != 0) rsrc2 |= 1u << 8; // Workgroup ID Y for the 2D grid
 

@@ -28,7 +28,7 @@ DirectAMD Runtime (C++20)
        │
        ├── Device Subsystem (DRM Render Node Query)
        ├── Memory Subsystem (GEM BO VRAM/GTT Allocation & VA Mapping)
-       ├── Math Subsystem (Guarded FP32 GEMV and GEMM)
+       ├── Math Subsystem (FP32 GEMV, GEMM and Softmax)
        ├── ISA Subsystem (Zero-Dependency C++ Machine Code Generator)
        └── Command Subsystem (PM4 Packet Builder & CS Submission)
        │
@@ -49,12 +49,12 @@ AMD GPU Hardware (Compute Ring / CUs)
   - GEM Buffer Object VRAM/GTT Manager & 48-bit Virtual Address Manager implemented.
   - PM4 Compute Dispatch Command Packet Builder implemented.
   - CPU Reference Vector-Add and Test Suite validated.
-* **Hardware execution:** Direct DRM FP32 vector addition, GEMV and GEMM passed on the Radeon RX 570 and RX 580 (Polaris 10 / GCN4 / `gfx803`). All five CTest host tests passed in the same build. See the [validation report](docs/FINAL_VALIDATION_REPORT.md).
+* **Hardware execution:** Direct DRM FP32 vector addition, GEMV, GEMM and Softmax passed on the Radeon RX 570 and RX 580 (Polaris 10 / GCN4 / `gfx803`). All five CTest host tests passed in the same build. See the [validation report](docs/FINAL_VALIDATION_REPORT.md).
 
 ---
 
 ## Supported Hardware
-* **Polaris 10 (GCN4 / gfx803):** Direct DRM vector-add, GEMV and GEMM examples validated on RX 570 and RX 580.
+* **Polaris 10 (GCN4 / gfx803):** Direct DRM vector-add, GEMV, GEMM and Softmax examples validated on RX 570 and RX 580.
 * **RDNA2 (GFX1030 / Navi 21, 22, 23):** Primary initial ISA research target.
 * **RDNA3 (GFX1100 / Navi 31, 32, 33):** ISA research target.
 * **GCN5 / Vega:** Experimental.
@@ -132,6 +132,23 @@ before copying the result to the caller's span.
 The example compares every GPU result with a double-precision CPU
 reference for ten shapes, including rectangular matrices with partial
 64-lane workgroups.
+
+### FP32 Softmax on Polaris 10
+
+The `softmax_fp32` API normalizes one nonempty vector of finite FP32
+logits. Input and output spans must have the same length. A wave64 GPU
+kernel subtracts the maximum before exponentiation, accumulates with
+compensation, and scales the small tail to retain subnormal results.
+The call waits for the GPU fence and verifies output bounds before
+returning the probabilities.
+
+```bash
+./build/examples/softmax_example /dev/dri/renderD128
+```
+
+The example compares GPU probabilities with a double-precision CPU
+reference for lengths up to 65,537, checks the probability sum and
+output sentinels, and exercises extreme logits and invalid inputs.
 
 ---
 

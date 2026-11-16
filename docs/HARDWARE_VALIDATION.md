@@ -1,6 +1,6 @@
 # DirectAMD Physical GPU Validation
 
-The direct DRM vector-add, GEMV and GEMM examples target Polaris 10
+The direct DRM vector-add, GEMV, GEMM and Softmax examples target Polaris 10
 (GCN4 / `gfx803`, PCI ID `1002:67df`). Use a Linux system with the
 `amdgpu` driver and read/write access to each GPU's DRM render node.
 
@@ -29,7 +29,7 @@ selects one card per invocation.
 set -e
 for pci in 0000:0a:00.0 0000:0b:00.0; do
     node=$(readlink -f "/dev/dri/by-path/pci-${pci}-render")
-    for example in vector_add_example gemv_example gemm_example; do
+    for example in vector_add_example gemv_example gemm_example softmax_example; do
         for run in 1 2 3; do
             "./build/examples/$example" "$node"
         done
@@ -41,12 +41,13 @@ To inspect the actual command submissions and fence waits for one run:
 
 ```bash
 node=$(readlink -f /dev/dri/by-path/pci-0000:0a:00.0-render)
-strace -yy -e trace=ioctl -P "$node" ./build/examples/gemm_example "$node"
+strace -yy -e trace=ioctl -P "$node" ./build/examples/softmax_example "$node"
 ```
 
 A successful invocation reports all its GPU cases and exits 0. Expect
-two dispatches for vector add, nine for GEMV, or ten for GEMM. Each case
-checks GPU readback and output boundaries after a completed fence.
-GEMV and GEMM also check rejection of undersized input or output spans,
-as applicable. A submission, fence or readback failure exits nonzero.
+two dispatches for vector add, nine for GEMV, ten for GEMM, or sixteen
+for Softmax. Each case checks GPU readback and output boundaries after
+a completed fence. GEMV and GEMM check rejection of undersized spans.
+Softmax checks normalization and rejects empty, mismatched, and
+nonfinite inputs. A submission, fence or readback failure exits nonzero.
 Record GPU execution as untested if there is no usable render node.

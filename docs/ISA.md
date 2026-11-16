@@ -84,7 +84,21 @@ performs GFX8 flat loads, adds with `v_add_f32`, and stores the result
 with a flat store. Wait instructions order memory operations before
 arithmetic and wave termination.
 
-## 5. Architecture Justification Summary
+## 5. Polaris FP32 Softmax (gfx803)
+
+The kernel in `src/isa/polaris_softmax.cpp` uses lane X and a stride of
+64 to index the input. An EXEC mask protects the tail. XOR partner
+permutations with `ds_bpermute_b32` combine the wave's partial maxima
+and compensated partial sums. For logits `x` and maximum `m`, the
+kernel evaluates the exponential as `exp2((x - m) * log2(e))`.
+
+The output pass scales the base-2 exponent by shifting it by 64 when
+it is below −64. It compensates by multiplying by
+`2^-64 / sum` in place of `1 / sum`. This keeps the exponentiation
+itself in the normal range for probabilities representable as FP32
+subnormals.
+
+## 6. Architecture Justification Summary
 
 * **RDNA2 (GFX1030) / RDNA3 (GFX1100)**: Clean VOP2/VOP3 encoding scheme, standard 32-bit Wavefront dispatch, well-documented PM4 headers (`COMPUTE_PGM_LO/HI`, `USER_SGPR_MSB`).
 * DirectAMD implements `src/isa/rdna_encoder.cpp` as an internal, header-backed C++ instruction synthesizer producing machine code vectors without spawning sub-processes or invoking LLVM/ROCm.

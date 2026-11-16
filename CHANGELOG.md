@@ -21,6 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Polaris 10. Both use guarded GPU readback through the existing DRM path.
 - Revalidated vector add, GEMV and GEMM on the Radeon RX 570 and RX 580.
 
+- Added stable FP32 Softmax on Polaris 10 and a per-device validation
+  example. Verified it alongside the vector-add, GEMV and GEMM
+  regressions on the Radeon RX 570 and RX 580.
+
 ## [0.1.0] - 2026-10-05
 
 ### Added

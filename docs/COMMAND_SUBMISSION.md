@@ -42,7 +42,7 @@ The header count is the number of payload dwords minus one.
 The dispatch sets the program address with `COMPUTE_PGM_LO/HI` from the
 256-byte-aligned GPU address shifted right by eight bits. It configures
 64 threads in X and the register allocation in `COMPUTE_PGM_RSRC1/2`.
-All three kernels use the first six user SGPRs for three 64-bit buffer
+Vector add, GEMV and GEMM use the first six user SGPRs for three 64-bit buffer
 addresses. Vector add then receives the element count, GEMV receives
 rows and columns, and GEMM receives `M, N, K`. Workgroup X follows
 the user SGPRs, and GEMM also enables workgroup Y.
@@ -51,6 +51,10 @@ the user SGPRs, and GEMM also enables workgroup Y.
 bit. Vector add and GEMV round the element or row count up to a wave.
 GEMM dispatches `ceil(N/64)` workgroups in X and `M` in Y. Single-dword
 NOP packets align the indirect buffer to a multiple of eight dwords.
+
+Softmax uses five user SGPRs for two 64-bit buffer addresses and the
+vector length. Its PM4 dispatch launches a single wave64 workgroup and
+enables FP32 subnormal input and output handling.
 
 ## 4. Submission via `DRM_IOCTL_AMDGPU_CS`
 

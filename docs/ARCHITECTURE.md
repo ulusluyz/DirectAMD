@@ -62,6 +62,8 @@ DirectAMD is an experimental, standalone C++20 low-level runtime designed for di
 * Generates raw GPU machine instructions directly in C++.
 * `src/isa/polaris_encoder.cpp` provides the validated wave64 vector-add,
   GEMV and GEMM kernels for `gfx803`.
+* `src/isa/polaris_softmax.cpp` provides the wave64 Softmax kernel for
+  `gfx803`.
 * `src/isa/rdna_encoder.cpp` contains the RDNA instruction research code.
 
 ### 5. FP32 Matrix Operations (`src/math/`)
@@ -76,6 +78,18 @@ DirectAMD is an experimental, standalone C++20 low-level runtime designed for di
   which workgroup Y selects the row and the wave's X lanes select output
   columns. The GEMM kernel masks partial waves. Both kernels iterate the
   reduction dimension with separate FP32 multiply and add instructions.
+
+### 6. FP32 Softmax (`src/math/softmax.cpp`)
+* `softmax_fp32` accepts a nonempty vector of finite logits and an
+  equally sized output span. It validates both before GPU submission.
+* One wave64 workgroup processes the vector in 64-element strides.
+  Masked memory accesses handle a partial final stride. The kernel uses
+  lane permutations for the maximum and sum reductions.
+* A maximum shift avoids overflow. Compensated accumulation preserves
+  small contributions to the sum. Tail scaling preserves representable
+  subnormal probabilities.
+* The runtime uses host-visible GTT buffers, waits for the compute fence
+  and checks the GPU output bounds before copying the result.
 
 ---
 

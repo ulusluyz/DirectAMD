@@ -81,6 +81,27 @@ int main() {
     assert(gemm_dispatch[37] == 65);
     assert(gemm_dispatch[38] == 1);
 
+    static_assert(DirectAMD::SoftmaxKernelParams::valid_count(1));
+    static_assert(DirectAMD::SoftmaxKernelParams::valid_count(1u << 30));
+    static_assert(!DirectAMD::SoftmaxKernelParams::valid_count(0));
+    static_assert(!DirectAMD::SoftmaxKernelParams::valid_count((1u << 30) + 1));
+
+    DirectAMD::PM4Builder softmax;
+    softmax.add_polaris_softmax(0x100003000ULL, {0x100000100ULL, 0x100001100ULL, 65537});
+    const auto& softmax_dispatch = softmax.get_packets();
+    assert(softmax_dispatch.size() == 40);
+    assert(softmax_dispatch[16] == 0xF0042); // Twelve VGPRs and preserved FP32 subnormals
+    assert(softmax_dispatch[17] == 0x8A);
+    assert(softmax_dispatch[24] == 0xC0057600);
+    assert(softmax_dispatch[26] == 0x100);
+    assert(softmax_dispatch[28] == 0x1100);
+    assert(softmax_dispatch[30] == 65537);
+    assert(softmax_dispatch[31] == 0xC0031502);
+    assert(softmax_dispatch[32] == 1);
+    assert(softmax_dispatch[33] == 1);
+    assert(softmax_dispatch[34] == 1);
+    assert(softmax_dispatch[39] == 0xFFFF1000);
+
     std::cout << "[+] Serialized " << packets.size() << " dwords of PM4 compute packets.\n";
     std::cout << "[PASS] PM4 Packet Builder Test Completed.\n";
     return 0;
