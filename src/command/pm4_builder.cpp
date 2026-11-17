@@ -128,6 +128,19 @@ void PM4Builder::add_polaris_rope(uint64_t program_va, const RopeKernelParams& p
     }, 0, preserve_denormals_mode);
 }
 
+void PM4Builder::add_polaris_silu(uint64_t program_va, const SiluKernelParams& params) {
+    if (!SiluKernelParams::valid_count(params.count) || program_va % 256 != 0) {
+        throw std::invalid_argument("Invalid Polaris SiLU dispatch");
+    }
+
+    constexpr uint32_t preserve_denormals_mode = 0xf0;
+    add_polaris_dispatch(program_va, params.count, 3, {
+        static_cast<uint32_t>(params.input_va), static_cast<uint32_t>(params.input_va >> 32),
+        static_cast<uint32_t>(params.output_va), static_cast<uint32_t>(params.output_va >> 32),
+        params.count
+    }, 0, preserve_denormals_mode);
+}
+
 void PM4Builder::add_polaris_dispatch(uint64_t program_va, uint32_t items_x, uint32_t vgpr_blocks,
                                      const std::vector<uint32_t>& user_data, uint32_t groups_y,
                                      uint32_t float_mode) {

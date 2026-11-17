@@ -124,6 +124,17 @@ struct RopeKernelParams {
     }
 };
 
+struct SiluKernelParams {
+    uint64_t input_va;
+    uint64_t output_va;
+    uint32_t count;
+
+    // The kernel uses an unsigned 32-bit byte offset per element.
+    static constexpr bool valid_count(uint64_t count) noexcept {
+        return count != 0 && count <= (uint64_t{1} << 30);
+    }
+};
+
 } // namespace DirectAMD
 
 #endif // DIRECTAMD_COMMON_HPP

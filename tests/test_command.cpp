@@ -152,6 +152,27 @@ int main() {
     assert(rope_dispatch[37] == 1);
     assert(rope_dispatch[38] == 1);
 
+    static_assert(DirectAMD::SiluKernelParams::valid_count(1));
+    static_assert(DirectAMD::SiluKernelParams::valid_count(1u << 30));
+    static_assert(!DirectAMD::SiluKernelParams::valid_count(0));
+    static_assert(!DirectAMD::SiluKernelParams::valid_count((1u << 30) + 1));
+
+    DirectAMD::PM4Builder silu;
+    silu.add_polaris_silu(0x100003000ULL, {0x100000100ULL, 0x100001100ULL, 65537});
+    const auto& silu_dispatch = silu.get_packets();
+    assert(silu_dispatch.size() == 40);
+    assert(silu_dispatch[16] == 0xF0042); // Twelve VGPRs and preserved FP32 subnormals
+    assert(silu_dispatch[17] == 0x8A);
+    assert(silu_dispatch[24] == 0xC0057600);
+    assert(silu_dispatch[26] == 0x100);
+    assert(silu_dispatch[28] == 0x1100);
+    assert(silu_dispatch[30] == 65537);
+    assert(silu_dispatch[31] == 0xC0031502);
+    assert(silu_dispatch[32] == 1025);
+    assert(silu_dispatch[33] == 1);
+    assert(silu_dispatch[34] == 1);
+    assert(silu_dispatch[39] == 0xFFFF1000);
+
     std::cout << "[+] Serialized " << packets.size() << " dwords of PM4 compute packets.\n";
     std::cout << "[PASS] PM4 Packet Builder Test Completed.\n";
     return 0;

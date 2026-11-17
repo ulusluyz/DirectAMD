@@ -28,7 +28,7 @@ DirectAMD Runtime (C++20)
        │
        ├── Device Subsystem (DRM Render Node Query)
        ├── Memory Subsystem (GEM BO VRAM/GTT Allocation & VA Mapping)
-       ├── Math Subsystem (FP32 GEMV, GEMM, Softmax, RMSNorm and RoPE)
+       ├── Math Subsystem (FP32 GEMV, GEMM, Softmax, RMSNorm, RoPE and SiLU)
        ├── ISA Subsystem (Zero-Dependency C++ Machine Code Generator)
        └── Command Subsystem (PM4 Packet Builder & CS Submission)
        │
@@ -49,12 +49,12 @@ AMD GPU Hardware (Compute Ring / CUs)
   - GEM Buffer Object VRAM/GTT Manager & 48-bit Virtual Address Manager implemented.
   - PM4 Compute Dispatch Command Packet Builder implemented.
   - CPU Reference Vector-Add and Test Suite validated.
-* **Hardware execution:** Direct DRM FP32 vector addition, GEMV, GEMM, Softmax, RMSNorm and RoPE passed on the Radeon RX 570 and RX 580 (Polaris 10 / GCN4 / `gfx803`). All five CTest host tests passed in the same build. See the [validation report](docs/FINAL_VALIDATION_REPORT.md).
+* **Hardware execution:** Direct DRM FP32 vector addition, GEMV, GEMM, Softmax, RMSNorm, RoPE and SiLU passed on the Radeon RX 570 and RX 580 (Polaris 10 / GCN4 / `gfx803`). All five CTest host tests passed in the same build. See the [validation report](docs/FINAL_VALIDATION_REPORT.md).
 
 ---
 
 ## Supported Hardware
-* **Polaris 10 (GCN4 / gfx803):** Direct DRM vector-add, GEMV, GEMM, Softmax, RMSNorm and RoPE examples validated on RX 570 and RX 580.
+* **Polaris 10 (GCN4 / gfx803):** Direct DRM vector-add, GEMV, GEMM, Softmax, RMSNorm, RoPE and SiLU examples validated on RX 570 and RX 580.
 * **RDNA2 (GFX1030 / Navi 21, 22, 23):** Primary initial ISA research target.
 * **RDNA3 (GFX1100 / Navi 31, 32, 33):** ISA research target.
 * **GCN5 / Vega:** Experimental.
@@ -185,6 +185,22 @@ The call waits for the compute fence and checks the output guards.
 
 The example compares both layouts with an independent double-precision
 CPU reference, including partial rotary prefixes and large positions.
+
+### FP32 SiLU on Polaris 10
+
+The `silu_fp32` API computes `x / (1 + exp(-x))` on the GPU for one
+nonempty vector of finite FP32 values. Input and output spans must
+have the same length and may alias. The kernel evaluates an exponential
+of `-abs(x)` to avoid overflow and scales the small negative tail to
+preserve subnormal output. The runtime waits for the GPU fence and
+checks the output guards before returning.
+
+```bash
+./build/examples/silu_example /dev/dri/renderD128
+```
+
+The example compares the GPU results with a double-precision CPU
+reference and checks in-place calls, signed zeros and FP32 extremes.
 
 ---
 

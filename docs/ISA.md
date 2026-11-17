@@ -118,7 +118,18 @@ It takes a table of FP32 phases in turns, evaluates `v_sin_f32` and
 route other valid lanes to a bitwise copy of the unrotated suffix and
 disable lanes beyond the output.
 
-## 8. Architecture Justification Summary
+## 8. Polaris FP32 SiLU (gfx803)
+
+The kernel in `src/isa/polaris_silu.cpp` takes one lane per element
+and masks the partial final wave before accessing memory.
+It forms `t = exp(-abs(x))` and uses `x / (1 + t)` for nonnegative
+values or `x * t / (1 + t)` for negative values. The exponential is
+evaluated in base two. For the small negative tail, the kernel
+scales the exponential by `2^64` and the numerator factor by
+`2^-64` to retain representable subnormal results. Magnitudes beyond
+128 already give the FP32 limits of the activation.
+
+## 9. Architecture Justification Summary
 
 * **RDNA2 (GFX1030) / RDNA3 (GFX1100)**: Clean VOP2/VOP3 encoding scheme, standard 32-bit Wavefront dispatch, well-documented PM4 headers (`COMPUTE_PGM_LO/HI`, `USER_SGPR_MSB`).
 * DirectAMD implements `src/isa/rdna_encoder.cpp` as an internal, header-backed C++ instruction synthesizer producing machine code vectors without spawning sub-processes or invoking LLVM/ROCm.

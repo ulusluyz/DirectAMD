@@ -1,6 +1,6 @@
 # DirectAMD Physical GPU Validation
 
-The direct DRM vector-add, GEMV, GEMM, Softmax, RMSNorm and RoPE examples target Polaris 10
+The direct DRM vector-add, GEMV, GEMM, Softmax, RMSNorm, RoPE and SiLU examples target Polaris 10
 (GCN4 / `gfx803`, PCI ID `1002:67df`). Use a Linux system with the
 `amdgpu` driver and read/write access to each GPU's DRM render node.
 
@@ -29,7 +29,7 @@ selects one card per invocation.
 set -e
 for pci in 0000:0a:00.0 0000:0b:00.0; do
     node=$(readlink -f "/dev/dri/by-path/pci-${pci}-render")
-    for example in vector_add_example gemv_example gemm_example softmax_example rmsnorm_example rope_example; do
+    for example in vector_add_example gemv_example gemm_example softmax_example rmsnorm_example rope_example silu_example; do
         for run in 1 2 3; do
             "./build/examples/$example" "$node"
         done
@@ -41,16 +41,19 @@ To inspect the actual command submissions and fence waits for one run:
 
 ```bash
 node=$(readlink -f /dev/dri/by-path/pci-0000:0a:00.0-render)
-strace -yy -e trace=ioctl -P "$node" ./build/examples/rope_example "$node"
+strace -yy -e trace=ioctl -P "$node" ./build/examples/silu_example "$node"
 ```
 
 A successful invocation reports all its GPU cases and exits 0. Expect
 two dispatches for vector add, nine for GEMV, ten for GEMM, or sixteen
-each for Softmax and RMSNorm, and twenty for RoPE. Each case checks
+each for Softmax and RMSNorm, twenty for RoPE, and fifteen for SiLU.
+Each case checks
 GPU readback and output boundaries after a completed fence. GEMV and GEMM check rejection of undersized spans.
 Softmax checks normalization and rejects empty, mismatched, and
 nonfinite inputs. RMSNorm checks its weighted output and rejects
 invalid lengths, input values, weights and epsilon. RoPE checks both
 layouts against a CPU reference, verifies the unchanged suffix and
-rejects invalid spans, rotary dimensions, bases and layouts. A submission, fence or readback failure exits nonzero.
+rejects invalid spans, rotary dimensions, bases and layouts. SiLU
+checks in-place output, signed zeros, extreme values and invalid
+inputs. A submission, fence or readback failure exits nonzero.
 Record GPU execution as untested if there is no usable render node.

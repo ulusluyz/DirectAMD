@@ -65,6 +65,10 @@ addresses, vector length, rotary dimension, and layout. Its grid
 contains one logical work item per rotary pair and one per element
 in the unrotated suffix, rounded up to wave64 workgroups.
 
+SiLU uses five user SGPRs for the input and output addresses and
+vector length. The grid rounds the element count up to wave64
+workgroups, and the dispatch enables FP32 subnormal handling.
+
 ## 4. Submission via `DRM_IOCTL_AMDGPU_CS`
 
 DirectAMD creates a BO list with `DRM_IOCTL_AMDGPU_BO_LIST` containing

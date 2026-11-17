@@ -68,6 +68,7 @@ DirectAMD is an experimental, standalone C++20 low-level runtime designed for di
   kernel for `gfx803`.
 * `src/isa/polaris_rope.cpp` provides the FP32 interleaved and half-split
   RoPE kernel for `gfx803`.
+* `src/isa/polaris_silu.cpp` provides the FP32 SiLU kernel for `gfx803`.
 * `src/isa/rdna_encoder.cpp` contains the RDNA instruction research code.
 
 ### 5. FP32 Matrix Operations (`src/math/`)
@@ -116,6 +117,16 @@ DirectAMD is an experimental, standalone C++20 low-level runtime designed for di
 * One work item rotates one pair or copies one element outside the
   rotary prefix. The runtime uses guarded GTT buffers and waits for
   the compute fence before copying the checked result to the caller.
+
+### 9. FP32 SiLU (`src/math/silu.cpp`)
+* `silu_fp32` accepts equal nonempty input and output spans and
+  validates finite input values. The spans may alias.
+* One GPU lane computes each element. The kernel uses a nonpositive
+  exponential argument and scales the negative tail to retain
+  representable subnormal outputs.
+* SiLU and Softmax share the guarded unary submission path in
+  `src/math/polaris_unary.hpp`. It uploads input before GPU dispatch
+  and copies validated output back after the compute fence.
 
 ---
 

@@ -15,3 +15,6 @@ target_link_libraries(rmsnorm_example PRIVATE directamd_runtime)
 
 add_executable(rope_example rope/main.cpp)
 target_link_libraries(rope_example PRIVATE directamd_runtime)
+
+add_executable(silu_example silu/main.cpp)
+target_link_libraries(silu_example PRIVATE directamd_runtime)

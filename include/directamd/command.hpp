@@ -30,6 +30,7 @@ public:
     void add_polaris_softmax(uint64_t program_va, const SoftmaxKernelParams& params);
     void add_polaris_rmsnorm(uint64_t program_va, const RmsNormKernelParams& params);
     void add_polaris_rope(uint64_t program_va, const RopeKernelParams& params);
+    void add_polaris_silu(uint64_t program_va, const SiluKernelParams& params);
 
     const std::vector<uint32_t>& get_packets() const noexcept { return packets_; }
     size_t get_size_bytes() const noexcept { return packets_.size() * sizeof(uint32_t); }
