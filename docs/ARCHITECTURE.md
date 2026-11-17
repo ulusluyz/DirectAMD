@@ -66,6 +66,8 @@ DirectAMD is an experimental, standalone C++20 low-level runtime designed for di
   `gfx803`.
 * `src/isa/polaris_rmsnorm.cpp` provides the weighted FP32 RMSNorm
   kernel for `gfx803`.
+* `src/isa/polaris_rope.cpp` provides the FP32 interleaved and half-split
+  RoPE kernel for `gfx803`.
 * `src/isa/rdna_encoder.cpp` contains the RDNA instruction research code.
 
 ### 5. FP32 Matrix Operations (`src/math/`)
@@ -103,6 +105,17 @@ DirectAMD is an experimental, standalone C++20 low-level runtime designed for di
 * The runtime reuses the guarded GTT buffer and fence path used by GEMV
   and GEMM. It checks the output sentinels and rejects NaN readback
   before copying the result.
+
+### 8. FP32 RoPE (`src/math/rope.cpp`)
+* `rope_fp32` accepts a finite FP32 vector and a layout, position,
+  rotary dimension and frequency base. It validates the parameters
+  before buffer allocation or submission.
+* The host computes and range-reduces position-dependent phases in
+  extended precision before rounding them to FP32 turns. The GPU
+  evaluates sine and cosine and performs the pair rotations.
+* One work item rotates one pair or copies one element outside the
+  rotary prefix. The runtime uses guarded GTT buffers and waits for
+  the compute fence before copying the checked result to the caller.
 
 ---
 

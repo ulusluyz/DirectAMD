@@ -60,6 +60,11 @@ RMSNorm uses eight user SGPRs for the input, weight and output
 addresses, vector length, and FP32 epsilon bits. Its PM4 dispatch
 launches one wave64 workgroup and enables FP32 subnormal handling.
 
+RoPE uses nine user SGPRs for the input, phase table and output
+addresses, vector length, rotary dimension, and layout. Its grid
+contains one logical work item per rotary pair and one per element
+in the unrotated suffix, rounded up to wave64 workgroups.
+
 ## 4. Submission via `DRM_IOCTL_AMDGPU_CS`
 
 DirectAMD creates a BO list with `DRM_IOCTL_AMDGPU_BO_LIST` containing

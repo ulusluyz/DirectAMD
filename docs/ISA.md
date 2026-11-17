@@ -109,7 +109,16 @@ output pass combines input and weight mantissas and applies their
 combined exponent with the inverse scaling in a single step. This
 limits intermediate overflow and underflow.
 
-## 7. Architecture Justification Summary
+## 7. Polaris FP32 RoPE (gfx803)
+
+The kernel in `src/isa/polaris_rope.cpp` pairs lanes' inputs as
+`(2i, 2i+1)` for interleaved or `(i, i + rotary_dim/2)` for half-split.
+It takes a table of FP32 phases in turns, evaluates `v_sin_f32` and
+`v_cos_f32`, and applies the two-component rotation in FP32. EXEC masks
+route other valid lanes to a bitwise copy of the unrotated suffix and
+disable lanes beyond the output.
+
+## 8. Architecture Justification Summary
 
 * **RDNA2 (GFX1030) / RDNA3 (GFX1100)**: Clean VOP2/VOP3 encoding scheme, standard 32-bit Wavefront dispatch, well-documented PM4 headers (`COMPUTE_PGM_LO/HI`, `USER_SGPR_MSB`).
 * DirectAMD implements `src/isa/rdna_encoder.cpp` as an internal, header-backed C++ instruction synthesizer producing machine code vectors without spawning sub-processes or invoking LLVM/ROCm.

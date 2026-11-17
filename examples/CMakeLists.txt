@@ -12,3 +12,6 @@ target_link_libraries(softmax_example PRIVATE directamd_runtime)
 
 add_executable(rmsnorm_example rmsnorm/main.cpp)
 target_link_libraries(rmsnorm_example PRIVATE directamd_runtime)
+
+add_executable(rope_example rope/main.cpp)
+target_link_libraries(rope_example PRIVATE directamd_runtime)

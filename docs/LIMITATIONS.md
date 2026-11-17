@@ -19,7 +19,8 @@ This document documents technical limitations of the DirectAMD runtime prototype
    - The Polaris path also supports contiguous row-major FP32 GEMV and GEMM. The matrix kernels use simple dot-product accumulation and have no performance qualification.
    - FP32 Softmax normalizes one vector of finite logits per call with a single wave64 workgroup.
    - FP32 RMSNorm normalizes one vector of finite input values with finite per-element weights and a positive finite epsilon.
+   - FP32 RoPE rotates one vector per call with a nonnegative 32-bit position, a positive even rotary dimension and a finite frequency base of at least one.
    - Other higher-level tensor operations and Transformer LLM layers are outside the current scope.
 
 4. **Multi-GPU Context Partitioning:**
-   - The example dispatches to one selected render node per invocation. The validated hardware path is Polaris 10 FP32 vector addition, GEMV, GEMM, Softmax and RMSNorm on the RX 570 and RX 580. See the [hardware validation report](FINAL_VALIDATION_REPORT.md).
+   - The example dispatches to one selected render node per invocation. The validated hardware path is Polaris 10 FP32 vector addition, GEMV, GEMM, Softmax, RMSNorm and RoPE on the RX 570 and RX 580. See the [hardware validation report](FINAL_VALIDATION_REPORT.md).

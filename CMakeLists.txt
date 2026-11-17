@@ -34,6 +34,7 @@ add_library(directamd_runtime STATIC
     src/math/gemm.cpp
     src/math/softmax.cpp
     src/math/rmsnorm.cpp
+    src/math/rope.cpp
     src/device/device_discovery.cpp
     src/memory/va_manager.cpp
     src/memory/buffer_object.cpp
@@ -41,6 +42,7 @@ add_library(directamd_runtime STATIC
     src/isa/polaris_encoder.cpp
     src/isa/polaris_softmax.cpp
     src/isa/polaris_rmsnorm.cpp
+    src/isa/polaris_rope.cpp
     src/command/pm4_builder.cpp
     src/command/command_submission.cpp
 )

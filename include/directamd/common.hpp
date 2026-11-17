@@ -100,6 +100,30 @@ struct RmsNormKernelParams {
     }
 };
 
+enum class RopeLayout : uint32_t {
+    Interleaved = 0,
+    HalfSplit = 1
+};
+
+struct RopeKernelParams {
+    uint64_t input_va;
+    uint64_t phase_va;
+    uint64_t output_va;
+    uint32_t count;
+    uint32_t rotary_dim;
+    RopeLayout layout;
+
+    // Element offsets must fit in an unsigned 32-bit byte offset.
+    static constexpr bool valid_shape(uint64_t count, uint32_t rotary_dim) noexcept {
+        return rotary_dim != 0 && rotary_dim % 2 == 0 &&
+               rotary_dim <= count && count <= (uint64_t{1} << 30);
+    }
+
+    static constexpr bool valid_layout(RopeLayout layout) noexcept {
+        return layout == RopeLayout::Interleaved || layout == RopeLayout::HalfSplit;
+    }
+};
+
 } // namespace DirectAMD
 
 #endif // DIRECTAMD_COMMON_HPP

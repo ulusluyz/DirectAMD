@@ -28,7 +28,7 @@ DirectAMD Runtime (C++20)
        │
        ├── Device Subsystem (DRM Render Node Query)
        ├── Memory Subsystem (GEM BO VRAM/GTT Allocation & VA Mapping)
-       ├── Math Subsystem (FP32 GEMV, GEMM, Softmax and RMSNorm)
+       ├── Math Subsystem (FP32 GEMV, GEMM, Softmax, RMSNorm and RoPE)
        ├── ISA Subsystem (Zero-Dependency C++ Machine Code Generator)
        └── Command Subsystem (PM4 Packet Builder & CS Submission)
        │
@@ -49,12 +49,12 @@ AMD GPU Hardware (Compute Ring / CUs)
   - GEM Buffer Object VRAM/GTT Manager & 48-bit Virtual Address Manager implemented.
   - PM4 Compute Dispatch Command Packet Builder implemented.
   - CPU Reference Vector-Add and Test Suite validated.
-* **Hardware execution:** Direct DRM FP32 vector addition, GEMV, GEMM, Softmax and RMSNorm passed on the Radeon RX 570 and RX 580 (Polaris 10 / GCN4 / `gfx803`). All five CTest host tests passed in the same build. See the [validation report](docs/FINAL_VALIDATION_REPORT.md).
+* **Hardware execution:** Direct DRM FP32 vector addition, GEMV, GEMM, Softmax, RMSNorm and RoPE passed on the Radeon RX 570 and RX 580 (Polaris 10 / GCN4 / `gfx803`). All five CTest host tests passed in the same build. See the [validation report](docs/FINAL_VALIDATION_REPORT.md).
 
 ---
 
 ## Supported Hardware
-* **Polaris 10 (GCN4 / gfx803):** Direct DRM vector-add, GEMV, GEMM, Softmax and RMSNorm examples validated on RX 570 and RX 580.
+* **Polaris 10 (GCN4 / gfx803):** Direct DRM vector-add, GEMV, GEMM, Softmax, RMSNorm and RoPE examples validated on RX 570 and RX 580.
 * **RDNA2 (GFX1030 / Navi 21, 22, 23):** Primary initial ISA research target.
 * **RDNA3 (GFX1100 / Navi 31, 32, 33):** ISA research target.
 * **GCN5 / Vega:** Experimental.
@@ -165,6 +165,26 @@ The runtime waits for the GPU fence and checks output guards.
 
 The example checks zero, signed, fractional, and extreme inputs and
 compares GPU results with a double-precision CPU reference.
+
+### FP32 RoPE on Polaris 10
+
+The `rope_fp32` API takes a vector and a `RopeConfig` with a nonnegative
+32-bit position, positive even rotary dimension, finite frequency base
+at least 1 (default 10000), and layout. Pair `i` rotates by
+`position * base^(-2*i/rotary_dim)` radians. Interleaved pairs consecutive
+elements. Half-split pairs the two halves of the rotary prefix.
+The GPU copies elements beyond the prefix bit for bit.
+
+The host reduces phases in extended precision before sending them to
+the GPU. The `gfx803` kernel computes sine, cosine, and the rotations.
+The call waits for the compute fence and checks the output guards.
+
+```bash
+./build/examples/rope_example /dev/dri/renderD128
+```
+
+The example compares both layouts with an independent double-precision
+CPU reference, including partial rotary prefixes and large positions.
 
 ---
 

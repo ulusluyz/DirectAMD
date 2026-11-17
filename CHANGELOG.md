@@ -29,6 +29,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Verified it and the vector-add, GEMV, GEMM and Softmax regressions on
   Radeon RX 570 and RX 580.
 
+- Added FP32 RoPE for Polaris 10 with interleaved and half-split
+  layouts and a per-device example. Verified both layouts and the five
+  existing GPU regressions on Radeon RX 570 and RX 580.
+
 ## [0.1.0] - 2026-10-05
 
 ### Added

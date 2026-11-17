@@ -126,6 +126,32 @@ int main() {
     assert(rmsnorm_dispatch[37] == 1);
     assert(rmsnorm_dispatch[39] == 0xFFFF1000);
 
+    static_assert(DirectAMD::RopeKernelParams::valid_shape(257, 130));
+    static_assert(!DirectAMD::RopeKernelParams::valid_shape(257, 0));
+    static_assert(!DirectAMD::RopeKernelParams::valid_shape(257, 129));
+    static_assert(!DirectAMD::RopeKernelParams::valid_shape(65, 66));
+    static_assert(!DirectAMD::RopeKernelParams::valid_shape((1u << 30) + 1, 2));
+    static_assert(!DirectAMD::RopeKernelParams::valid_layout(static_cast<DirectAMD::RopeLayout>(2)));
+
+    DirectAMD::PM4Builder rope;
+    rope.add_polaris_rope(0x100003000ULL, {
+        0x100000000ULL, 0x100001100ULL, 0x100002100ULL, 257, 130, DirectAMD::RopeLayout::HalfSplit
+    });
+    const auto& rope_dispatch = rope.get_packets();
+    assert(rope_dispatch.size() == 40);
+    assert(rope_dispatch[16] == 0xF0043); // Sixteen VGPRs, FP32 subnormal support
+    assert(rope_dispatch[17] == 0x92);
+    assert(rope_dispatch[24] == 0xC0097600);
+    assert(rope_dispatch[28] == 0x1100);
+    assert(rope_dispatch[30] == 0x2100);
+    assert(rope_dispatch[32] == 257);
+    assert(rope_dispatch[33] == 130);
+    assert(rope_dispatch[34] == 1); // Half-split
+    assert(rope_dispatch[35] == 0xC0031502);
+    assert(rope_dispatch[36] == 3); // 65 pairs plus 127 unrotated elements
+    assert(rope_dispatch[37] == 1);
+    assert(rope_dispatch[38] == 1);
+
     std::cout << "[+] Serialized " << packets.size() << " dwords of PM4 compute packets.\n";
     std::cout << "[PASS] PM4 Packet Builder Test Completed.\n";
     return 0;
