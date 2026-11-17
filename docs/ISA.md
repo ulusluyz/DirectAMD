@@ -98,7 +98,18 @@ it is below −64. It compensates by multiplying by
 itself in the normal range for probabilities representable as FP32
 subnormals.
 
-## 6. Architecture Justification Summary
+## 6. Polaris FP32 RMSNorm (gfx803)
+
+The kernel in `src/isa/polaris_rmsnorm.cpp` masks accesses beyond the
+end of the vector and reduces across the wave with `ds_bpermute_b32`.
+For a scale `2^e` based on the largest input magnitude and epsilon,
+it accumulates `mean((x * 2^-e)^2)` with compensation and adds
+`epsilon * 2^(-2e)` before taking the reciprocal square root. The
+output pass combines input and weight mantissas and applies their
+combined exponent with the inverse scaling in a single step. This
+limits intermediate overflow and underflow.
+
+## 7. Architecture Justification Summary
 
 * **RDNA2 (GFX1030) / RDNA3 (GFX1100)**: Clean VOP2/VOP3 encoding scheme, standard 32-bit Wavefront dispatch, well-documented PM4 headers (`COMPUTE_PGM_LO/HI`, `USER_SGPR_MSB`).
 * DirectAMD implements `src/isa/rdna_encoder.cpp` as an internal, header-backed C++ instruction synthesizer producing machine code vectors without spawning sub-processes or invoking LLVM/ROCm.

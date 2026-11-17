@@ -24,7 +24,8 @@
 - [x] FP32 GEMV on Polaris 10, verified on RX 570 and RX 580
 - [x] FP32 GEMM on Polaris 10, verified on RX 570 and RX 580
 - [x] FP32 Softmax on Polaris 10, verified on RX 570 and RX 580
-- [ ] RMSNorm, RoPE, SiLU Compute Kernels
+- [x] FP32 RMSNorm on Polaris 10, verified on RX 570 and RX 580
+- [ ] RoPE, SiLU Compute Kernels
 
 ### Stage 4: Transformer LLM Inference Subsystem
 - [ ] Memory Allocation for Transformer Weights & KV Cache

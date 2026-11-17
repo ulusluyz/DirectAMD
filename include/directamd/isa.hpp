@@ -19,6 +19,7 @@ public:
     static std::vector<uint32_t> emit_gemv_kernel();
     static std::vector<uint32_t> emit_gemm_kernel();
     static std::vector<uint32_t> emit_softmax_kernel();
+    static std::vector<uint32_t> emit_rmsnorm_kernel();
 };
 
 class RDNAEncoder {

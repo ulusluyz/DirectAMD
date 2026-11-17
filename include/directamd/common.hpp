@@ -87,6 +87,19 @@ struct SoftmaxKernelParams {
     }
 };
 
+struct RmsNormKernelParams {
+    uint64_t input_va{0};
+    uint64_t weights_va{0};
+    uint64_t output_va{0};
+    uint32_t count{0};
+    float epsilon{0};
+
+    // The kernel uses unsigned 32-bit byte offsets.
+    static constexpr bool valid_count(uint64_t count) noexcept {
+        return count != 0 && count <= (uint64_t{1} << 30);
+    }
+};
+
 } // namespace DirectAMD
 
 #endif // DIRECTAMD_COMMON_HPP

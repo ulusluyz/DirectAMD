@@ -102,6 +102,30 @@ int main() {
     assert(softmax_dispatch[34] == 1);
     assert(softmax_dispatch[39] == 0xFFFF1000);
 
+    static_assert(DirectAMD::RmsNormKernelParams::valid_count(1));
+    static_assert(DirectAMD::RmsNormKernelParams::valid_count(1u << 30));
+    static_assert(!DirectAMD::RmsNormKernelParams::valid_count(0));
+    static_assert(!DirectAMD::RmsNormKernelParams::valid_count((1u << 30) + 1));
+
+    DirectAMD::PM4Builder rmsnorm;
+    rmsnorm.add_polaris_rmsnorm(0x100003000ULL, {
+        0x100000000ULL, 0x100001100ULL, 0x100002100ULL, 65537, 0.125f
+    });
+    const auto& rmsnorm_dispatch = rmsnorm.get_packets();
+    assert(rmsnorm_dispatch.size() == 40);
+    assert(rmsnorm_dispatch[16] == 0xF0042);
+    assert(rmsnorm_dispatch[17] == 0x90);
+    assert(rmsnorm_dispatch[24] == 0xC0087600);
+    assert(rmsnorm_dispatch[28] == 0x1100);
+    assert(rmsnorm_dispatch[30] == 0x2100);
+    assert(rmsnorm_dispatch[32] == 65537);
+    assert(rmsnorm_dispatch[33] == 0x3E000000); // IEEE 754 bits for epsilon
+    assert(rmsnorm_dispatch[34] == 0xC0031502);
+    assert(rmsnorm_dispatch[35] == 1);
+    assert(rmsnorm_dispatch[36] == 1);
+    assert(rmsnorm_dispatch[37] == 1);
+    assert(rmsnorm_dispatch[39] == 0xFFFF1000);
+
     std::cout << "[+] Serialized " << packets.size() << " dwords of PM4 compute packets.\n";
     std::cout << "[PASS] PM4 Packet Builder Test Completed.\n";
     return 0;

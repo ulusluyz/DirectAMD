@@ -56,6 +56,10 @@ Softmax uses five user SGPRs for two 64-bit buffer addresses and the
 vector length. Its PM4 dispatch launches a single wave64 workgroup and
 enables FP32 subnormal input and output handling.
 
+RMSNorm uses eight user SGPRs for the input, weight and output
+addresses, vector length, and FP32 epsilon bits. Its PM4 dispatch
+launches one wave64 workgroup and enables FP32 subnormal handling.
+
 ## 4. Submission via `DRM_IOCTL_AMDGPU_CS`
 
 DirectAMD creates a BO list with `DRM_IOCTL_AMDGPU_BO_LIST` containing

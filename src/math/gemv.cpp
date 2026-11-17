@@ -1,5 +1,5 @@
 #include "directamd/gemv.hpp"
-#include "polaris_matrix_product.hpp"
+#include "polaris_binary.hpp"
 
 namespace DirectAMD {
 
@@ -11,7 +11,7 @@ bool gemv_fp32(Device& device, uint32_t context, VAManager& va,
         return false;
     }
 
-    return detail::run_polaris_matrix_product(device, context, va, matrix, x, y, 1,
+    return detail::run_polaris_binary(device, context, va, matrix, x, y, 1,
         ISA::PolarisEncoder::emit_gemv_kernel(),
         [&](PM4Builder& pm4, uint64_t program, uint64_t a, uint64_t b, uint64_t c) {
             pm4.add_polaris_gemv(program, {a, b, c, static_cast<uint32_t>(y.size()),

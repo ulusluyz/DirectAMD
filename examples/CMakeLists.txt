@@ -9,3 +9,6 @@ target_link_libraries(gemm_example PRIVATE directamd_runtime)
 
 add_executable(softmax_example softmax/main.cpp)
 target_link_libraries(softmax_example PRIVATE directamd_runtime)
+
+add_executable(rmsnorm_example rmsnorm/main.cpp)
+target_link_libraries(rmsnorm_example PRIVATE directamd_runtime)

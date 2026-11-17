@@ -1,5 +1,5 @@
 #include "directamd/gemm.hpp"
-#include "polaris_matrix_product.hpp"
+#include "polaris_binary.hpp"
 
 namespace DirectAMD {
 
@@ -15,7 +15,7 @@ bool gemm_fp32(Device& device, uint32_t context, VAManager& va,
         return false;
     }
 
-    return detail::run_polaris_matrix_product(device, context, va, a, b, c, columns,
+    return detail::run_polaris_binary(device, context, va, a, b, c, columns,
         ISA::PolarisEncoder::emit_gemm_kernel(),
         [&](PM4Builder& pm4, uint64_t program, uint64_t a_va, uint64_t b_va, uint64_t c_va) {
             pm4.add_polaris_gemm(program, {a_va, b_va, c_va, rows, columns, inner});

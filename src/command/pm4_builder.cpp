@@ -1,6 +1,8 @@
 #include "directamd/command.hpp"
 #include "directamd/isa.hpp"
 
+#include <bit>
+#include <cmath>
 #include <stdexcept>
 
 namespace DirectAMD {
@@ -92,6 +94,21 @@ void PM4Builder::add_polaris_softmax(uint64_t program_va, const SoftmaxKernelPar
         static_cast<uint32_t>(params.input_va), static_cast<uint32_t>(params.input_va >> 32),
         static_cast<uint32_t>(params.output_va), static_cast<uint32_t>(params.output_va >> 32),
         params.count
+    }, 0, preserve_denormals_mode);
+}
+
+void PM4Builder::add_polaris_rmsnorm(uint64_t program_va, const RmsNormKernelParams& params) {
+    if (!RmsNormKernelParams::valid_count(params.count) || program_va % 256 != 0 ||
+        !std::isfinite(params.epsilon) || params.epsilon <= 0.0f) {
+        throw std::invalid_argument("Invalid Polaris RMSNorm dispatch");
+    }
+
+    constexpr uint32_t preserve_denormals_mode = 0xf0;
+    add_polaris_dispatch(program_va, ISA::PolarisEncoder::wave_size, 3, {
+        static_cast<uint32_t>(params.input_va), static_cast<uint32_t>(params.input_va >> 32),
+        static_cast<uint32_t>(params.weights_va), static_cast<uint32_t>(params.weights_va >> 32),
+        static_cast<uint32_t>(params.output_va), static_cast<uint32_t>(params.output_va >> 32),
+        params.count, std::bit_cast<uint32_t>(params.epsilon)
     }, 0, preserve_denormals_mode);
 }
 

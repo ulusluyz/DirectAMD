@@ -25,6 +25,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   example. Verified it alongside the vector-add, GEMV and GEMM
   regressions on the Radeon RX 570 and RX 580.
 
+- Added weighted FP32 RMSNorm and a per-device example for Polaris 10.
+  Verified it and the vector-add, GEMV, GEMM and Softmax regressions on
+  Radeon RX 570 and RX 580.
+
 ## [0.1.0] - 2026-10-05
 
 ### Added

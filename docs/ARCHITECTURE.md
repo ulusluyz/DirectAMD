@@ -64,6 +64,8 @@ DirectAMD is an experimental, standalone C++20 low-level runtime designed for di
   GEMV and GEMM kernels for `gfx803`.
 * `src/isa/polaris_softmax.cpp` provides the wave64 Softmax kernel for
   `gfx803`.
+* `src/isa/polaris_rmsnorm.cpp` provides the weighted FP32 RMSNorm
+  kernel for `gfx803`.
 * `src/isa/rdna_encoder.cpp` contains the RDNA instruction research code.
 
 ### 5. FP32 Matrix Operations (`src/math/`)
@@ -90,6 +92,17 @@ DirectAMD is an experimental, standalone C++20 low-level runtime designed for di
   subnormal probabilities.
 * The runtime uses host-visible GTT buffers, waits for the compute fence
   and checks the GPU output bounds before copying the result.
+
+### 7. FP32 RMSNorm (`src/math/rmsnorm.cpp`)
+* `rmsnorm_fp32` accepts equal nonempty spans for input, weights and
+  output. Input and weights must be finite, and epsilon must be
+  positive and finite.
+* A single wave64 workgroup walks the vector in strides. It reduces
+  the maximum magnitude and a compensated sum of scaled squares.
+  The result applies the reciprocal RMS and the per-element weight.
+* The runtime reuses the guarded GTT buffer and fence path used by GEMV
+  and GEMM. It checks the output sentinels and rejects NaN readback
+  before copying the result.
 
 ---
 
