@@ -37,6 +37,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   per-device example. Verified SiLU and all six prior GPU workloads
   on Radeon RX 570 and RX 580.
 
+- Added FP32 elementwise vector multiplication for Polaris 10.
+  Validated bitwise FP32 rounding, both output aliases, and the seven
+  existing GPU workloads on Radeon RX 570 and RX 580.
+
 ## [0.1.0] - 2026-10-05
 
 ### Added

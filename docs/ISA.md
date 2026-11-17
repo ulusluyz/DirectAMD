@@ -129,7 +129,16 @@ scales the exponential by `2^64` and the numerator factor by
 `2^-64` to retain representable subnormal results. Magnitudes beyond
 128 already give the FP32 limits of the activation.
 
-## 9. Architecture Justification Summary
+## 9. Polaris FP32 Elementwise Vector Multiplication (gfx803)
+
+The elementwise kernel in `src/isa/polaris_encoder.cpp` uses the
+same wave64 indexing and masked flat loads and stores for vector add
+and vector multiply. The multiplication variant executes
+`v_mul_f32` once per active lane. Its dispatch preserves FP32
+subnormals. Products round to nearest, ties-to-even, including signed
+zeros and signed infinity on overflow.
+
+## 10. Architecture Justification Summary
 
 * **RDNA2 (GFX1030) / RDNA3 (GFX1100)**: Clean VOP2/VOP3 encoding scheme, standard 32-bit Wavefront dispatch, well-documented PM4 headers (`COMPUTE_PGM_LO/HI`, `USER_SGPR_MSB`).
 * DirectAMD implements `src/isa/rdna_encoder.cpp` as an internal, header-backed C++ instruction synthesizer producing machine code vectors without spawning sub-processes or invoking LLVM/ROCm.

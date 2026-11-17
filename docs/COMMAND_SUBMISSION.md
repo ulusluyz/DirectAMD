@@ -69,6 +69,11 @@ SiLU uses five user SGPRs for the input and output addresses and
 vector length. The grid rounds the element count up to wave64
 workgroups, and the dispatch enables FP32 subnormal handling.
 
+Vector multiplication uses seven user SGPRs for the three buffer
+addresses and element count. The grid rounds the element count up
+to wave64 groups. The dispatch enables FP32 subnormal handling and
+round-to-nearest, ties-to-even.
+
 ## 4. Submission via `DRM_IOCTL_AMDGPU_CS`
 
 DirectAMD creates a BO list with `DRM_IOCTL_AMDGPU_BO_LIST` containing

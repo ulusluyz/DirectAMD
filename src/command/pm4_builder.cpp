@@ -56,6 +56,20 @@ void PM4Builder::add_polaris_vector_add(uint64_t program_va, const VectorAddKern
     });
 }
 
+void PM4Builder::add_polaris_vector_mul(uint64_t program_va, const VectorMulKernelParams& params) {
+    if (!VectorMulKernelParams::valid_count(params.count) || program_va % 256 != 0) {
+        throw std::invalid_argument("Invalid Polaris vector-mul dispatch");
+    }
+
+    constexpr uint32_t preserve_denormals_mode = 0xf0;
+    add_polaris_dispatch(program_va, params.count, 2, {
+        static_cast<uint32_t>(params.a_va), static_cast<uint32_t>(params.a_va >> 32),
+        static_cast<uint32_t>(params.b_va), static_cast<uint32_t>(params.b_va >> 32),
+        static_cast<uint32_t>(params.c_va), static_cast<uint32_t>(params.c_va >> 32),
+        params.count
+    }, 0, preserve_denormals_mode);
+}
+
 void PM4Builder::add_polaris_gemv(uint64_t program_va, const GemvKernelParams& params) {
     if (!GemvKernelParams::valid_shape(params.rows, params.columns) || program_va % 256 != 0) {
         throw std::invalid_argument("Invalid Polaris GEMV dispatch");

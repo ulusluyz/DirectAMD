@@ -36,6 +36,7 @@ add_library(directamd_runtime STATIC
     src/math/rmsnorm.cpp
     src/math/rope.cpp
     src/math/silu.cpp
+    src/math/vector_mul.cpp
     src/device/device_discovery.cpp
     src/memory/va_manager.cpp
     src/memory/buffer_object.cpp

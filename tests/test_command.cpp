@@ -173,6 +173,29 @@ int main() {
     assert(silu_dispatch[34] == 1);
     assert(silu_dispatch[39] == 0xFFFF1000);
 
+    static_assert(DirectAMD::VectorMulKernelParams::valid_count(1));
+    static_assert(DirectAMD::VectorMulKernelParams::valid_count(1u << 30));
+    static_assert(!DirectAMD::VectorMulKernelParams::valid_count(0));
+    static_assert(!DirectAMD::VectorMulKernelParams::valid_count((1u << 30) + 1));
+
+    DirectAMD::PM4Builder vector_mul;
+    vector_mul.add_polaris_vector_mul(0x100003000ULL, {
+        0x100000000ULL, 0x100001100ULL, 0x100002100ULL, 65537
+    });
+    const auto& mul_dispatch = vector_mul.get_packets();
+    assert(mul_dispatch.size() == 40);
+    assert(mul_dispatch[16] == 0xF0041); // Eight VGPRs and preserved FP32 subnormals
+    assert(mul_dispatch[17] == 0x8E);
+    assert(mul_dispatch[24] == 0xC0077600);
+    assert(mul_dispatch[28] == 0x1100);
+    assert(mul_dispatch[30] == 0x2100);
+    assert(mul_dispatch[32] == 65537);
+    assert(mul_dispatch[33] == 0xC0031502);
+    assert(mul_dispatch[34] == 1025);
+    assert(mul_dispatch[35] == 1);
+    assert(mul_dispatch[36] == 1);
+    assert(mul_dispatch[39] == 0xFFFF1000);
+
     std::cout << "[+] Serialized " << packets.size() << " dwords of PM4 compute packets.\n";
     std::cout << "[PASS] PM4 Packet Builder Test Completed.\n";
     return 0;

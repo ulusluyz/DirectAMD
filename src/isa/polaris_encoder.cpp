@@ -1,8 +1,9 @@
 #include "directamd/isa.hpp"
 
 namespace DirectAMD::ISA {
+namespace {
 
-std::vector<uint32_t> PolarisEncoder::emit_vector_add_kernel() {
+std::vector<uint32_t> emit_elementwise_kernel(uint32_t arithmetic_instruction) {
     // Assembled with llvm-mc -triple=amdgcn-amd-amdhsa -mcpu=gfx803.
     // s[0:1], s[2:3], s[4:5] are the input/output VAs, s6 is count,
     // s7 is the workgroup X ID, and v0 is the local X ID.
@@ -13,11 +14,21 @@ std::vector<uint32_t> PolarisEncoder::emit_vector_add_kernel() {
         0x24020082, 0x7e060201, 0x32040200, 0x38060680, 0xdc510000, 0x04000002,
         // Load B[i].
         0x7e060203, 0x32040202, 0x38060680, 0xdc510000, 0x05000002,
-        // Wait for the loads and add as FP32.
-        0xbf8c0070, 0x02080b04,
+        // Wait for the loads and compute the FP32 result.
+        0xbf8c0070, arithmetic_instruction,
         // Store C[i], wait for the store, and end the wave.
         0x7e060205, 0x32040204, 0x38060680, 0xdc710000, 0x00000402, 0xbf8c0070, 0xbf810000,
     };
+}
+
+} // namespace
+
+std::vector<uint32_t> PolarisEncoder::emit_vector_add_kernel() {
+    return emit_elementwise_kernel(0x02080b04); // v_add_f32_e32 v4, v4, v5
+}
+
+std::vector<uint32_t> PolarisEncoder::emit_vector_mul_kernel() {
+    return emit_elementwise_kernel(0x0a080b04); // v_mul_f32_e32 v4, v4, v5
 }
 
 std::vector<uint32_t> PolarisEncoder::emit_gemv_kernel() {

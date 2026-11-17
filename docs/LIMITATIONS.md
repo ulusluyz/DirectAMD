@@ -21,7 +21,8 @@ This document documents technical limitations of the DirectAMD runtime prototype
    - FP32 RMSNorm normalizes one vector of finite input values with finite per-element weights and a positive finite epsilon.
    - FP32 RoPE rotates one vector per call with a nonnegative 32-bit position, a positive even rotary dimension and a finite frequency base of at least one.
    - FP32 SiLU takes one vector of finite values per call and supports aliasing the input and output spans.
+   - FP32 vector multiplication takes equal nonempty finite input vectors and supports aliasing either input with the output.
    - Other higher-level tensor operations and Transformer LLM layers are outside the current scope.
 
 4. **Multi-GPU Context Partitioning:**
-   - The example dispatches to one selected render node per invocation. The validated hardware path is Polaris 10 FP32 vector addition, GEMV, GEMM, Softmax, RMSNorm, RoPE and SiLU on the RX 570 and RX 580. See the [hardware validation report](FINAL_VALIDATION_REPORT.md).
+   - The example dispatches to one selected render node per invocation. The validated hardware path is Polaris 10 FP32 vector addition and multiplication, GEMV, GEMM, Softmax, RMSNorm, RoPE and SiLU on the RX 570 and RX 580. See the [hardware validation report](FINAL_VALIDATION_REPORT.md).

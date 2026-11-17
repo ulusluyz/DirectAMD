@@ -61,7 +61,7 @@ DirectAMD is an experimental, standalone C++20 low-level runtime designed for di
 ### 4. ISA Subsystem (`src/isa/`)
 * Generates raw GPU machine instructions directly in C++.
 * `src/isa/polaris_encoder.cpp` provides the validated wave64 vector-add,
-  GEMV and GEMM kernels for `gfx803`.
+  vector-mul, GEMV and GEMM kernels for `gfx803`.
 * `src/isa/polaris_softmax.cpp` provides the wave64 Softmax kernel for
   `gfx803`.
 * `src/isa/polaris_rmsnorm.cpp` provides the weighted FP32 RMSNorm
@@ -127,6 +127,16 @@ DirectAMD is an experimental, standalone C++20 low-level runtime designed for di
 * SiLU and Softmax share the guarded unary submission path in
   `src/math/polaris_unary.hpp`. It uploads input before GPU dispatch
   and copies validated output back after the compute fence.
+
+### 10. FP32 Elementwise Vector Multiplication (`src/math/vector_mul.cpp`)
+* `vector_mul_fp32` validates equal nonempty spans and finite operands
+  before allocating or submitting buffers.
+* One wave64 lane loads and multiplies each pair. The kernel shares
+  the vector-add indexing and address logic and masks inactive lanes
+  before memory access.
+* The runtime uploads both operands before submission. It waits for the
+  GPU fence and verifies output guards before copying the result, so
+  the destination may alias either input.
 
 ---
 

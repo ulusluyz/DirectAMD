@@ -135,6 +135,18 @@ struct SiluKernelParams {
     }
 };
 
+struct VectorMulKernelParams {
+    uint64_t a_va;
+    uint64_t b_va;
+    uint64_t c_va;
+    uint32_t count;
+
+    // Element addresses use unsigned 32-bit byte offsets.
+    static constexpr bool valid_count(uint64_t count) noexcept {
+        return count != 0 && count <= (uint64_t{1} << 30);
+    }
+};
+
 } // namespace DirectAMD
 
 #endif // DIRECTAMD_COMMON_HPP

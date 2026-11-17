@@ -20,7 +20,8 @@
 - [ ] Evaluation & Performance Logging
 
 ### Stage 3: Tensor Operations Subsystem
-- [ ] Elementwise Vector Multiplication & Reduction
+- [x] FP32 elementwise vector multiplication on Polaris 10, verified on RX 570 and RX 580
+- [ ] Reduction
 - [x] FP32 GEMV on Polaris 10, verified on RX 570 and RX 580
 - [x] FP32 GEMM on Polaris 10, verified on RX 570 and RX 580
 - [x] FP32 Softmax on Polaris 10, verified on RX 570 and RX 580

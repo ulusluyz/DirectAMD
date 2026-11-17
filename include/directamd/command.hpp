@@ -25,6 +25,7 @@ public:
     void add_dispatch_direct(uint32_t gx, uint32_t gy, uint32_t gz, uint32_t dispatch_initiator = 1);
 
     void add_polaris_vector_add(uint64_t program_va, const VectorAddKernelParams& params);
+    void add_polaris_vector_mul(uint64_t program_va, const VectorMulKernelParams& params);
     void add_polaris_gemv(uint64_t program_va, const GemvKernelParams& params);
     void add_polaris_gemm(uint64_t program_va, const GemmKernelParams& params);
     void add_polaris_softmax(uint64_t program_va, const SoftmaxKernelParams& params);

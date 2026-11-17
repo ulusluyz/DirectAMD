@@ -1,6 +1,6 @@
 # DirectAMD Polaris Validation Report
 
-Revalidated on 2026-11-17 at 19:47 TRT on Debian 13.7 x86-64 with Linux
+Revalidated on 2026-11-17 at 20:06 TRT on Debian 13.7 x86-64 with Linux
 `6.12.115+deb13.1-amd64` and the kernel `amdgpu` driver. The local build
 used GCC 14.2.0, CMake 3.31.6 and Ninja 1.12.1 in Debug mode with
 `ENABLE_WERROR=ON`, keeping the CTest assertions enabled.
@@ -14,7 +14,7 @@ All five registered CTest tests ran and passed. No tests were skipped.
 | `test_device` | Pass | Found two DRM render nodes and opened an AMDGPU node |
 | `test_memory` | Pass | Virtual address allocation and alignment |
 | `test_isa` | Pass | Host-side instruction encoding and termination |
-| `test_command` | Pass | PM4 headers, Polaris dispatch fields, shape and length bounds, RMSNorm epsilon encoding, RoPE layout, SiLU grid encoding, and IB alignment |
+| `test_command` | Pass | PM4 headers, Polaris dispatch fields, shape and length bounds, RMSNorm epsilon encoding, RoPE layout, SiLU and vector-mul grid encoding, and IB alignment |
 | `test_vector_add` | Pass | CPU reference output `[6, 8, 10, 12]` |
 
 ## Physical GPU tests
@@ -24,14 +24,14 @@ Both cards have PCI ID `1002:67df` and use Polaris / GCN4 (`gfx803`)
 wave64 kernels. Counts below are completed GPU cases compared against CPU
 references. Each case uses one command submission and one fence wait.
 
-| Hardware | PCI address | Render node | Vector add (2 cases/run) | GEMV (9 cases/run) | GEMM (10 cases/run) | Softmax (16 cases/run) | RMSNorm (16 cases/run) | RoPE interleaved (10 cases/run) | RoPE half-split (10 cases/run) | SiLU (15 cases/run) |
-| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Radeon RX 580, 36 CUs | `0000:0a:00.0` | `/dev/dri/renderD128` | 6/6 | 27/27 | 30/30 | 48/48 | 48/48 | 30/30 | 30/30 | 45/45 |
-| Radeon RX 570, 32 CUs | `0000:0b:00.0` | `/dev/dri/renderD129` | 6/6 | 27/27 | 30/30 | 48/48 | 48/48 | 30/30 | 30/30 | 45/45 |
+| Hardware | PCI address | Render node | Vector add (2 cases/run) | GEMV (9 cases/run) | GEMM (10 cases/run) | Softmax (16 cases/run) | RMSNorm (16 cases/run) | RoPE interleaved (10 cases/run) | RoPE half-split (10 cases/run) | SiLU (15 cases/run) | Vector multiply (15 cases/run) |
+| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Radeon RX 580, 36 CUs | `0000:0a:00.0` | `/dev/dri/renderD128` | 6/6 | 27/27 | 30/30 | 48/48 | 48/48 | 30/30 | 30/30 | 45/45 | 45/45 |
+| Radeon RX 570, 32 CUs | `0000:0b:00.0` | `/dev/dri/renderD129` | 6/6 | 27/27 | 30/30 | 48/48 | 48/48 | 30/30 | 30/30 | 45/45 | 45/45 |
 
-All 42 invocations exited with status 0. Device-filtered `strace`
-recorded 528 successful `DRM_IOCTL_AMDGPU_CS` calls and 528 successful
-`DRM_IOCTL_AMDGPU_WAIT_CS` calls, 264 of each per GPU. Each example
+All 48 invocations exited with status 0. Device-filtered `strace`
+recorded 618 successful `DRM_IOCTL_AMDGPU_CS` calls and 618 successful
+`DRM_IOCTL_AMDGPU_WAIT_CS` calls, 309 of each per GPU. Each example
 returned exit status 1 for an explicitly nonexistent render node.
 
 ### Numerical and buffer checks
@@ -45,6 +45,7 @@ returned exit status 1 for an explicitly nonexistent render node.
 | RMSNorm, vector length | `1`, `3`, `7`, `31`, `63`, `64`, `65`, `127`, `257`, `1024`, `4097`, `65537` | Maximum absolute error `3.05866e-7`. Maximum relative error over normal outputs `1.50645e-7` |
 | RoPE, vector length | `2`, `3`, `7`, `63`, `64`, `65`, `129`, `257`, `4097`, `65537` | Maximum absolute error `5.43912e-6` for interleaved and `5.16798e-6` for half-split |
 | SiLU, vector length | `1`, `2`, `3`, `7`, `8`, `12`, `31`, `63`, `64`, `65`, `127`, `257`, `1024`, `4097`, `65537` | Maximum absolute error `6.11656e-7`. Maximum relative error for reference values in the normal FP32 magnitude range `3.17576e-6` |
+| Vector multiply, vector length | `1`, `2`, `3`, `4`, `7`, `16`, `31`, `63`, `64`, `65`, `127`, `257`, `1024`, `4097`, `65537` | Every output bitwise identical to the CPU product rounded to FP32. Maximum relative rounding difference for normal results `5.96046e-8` |
 
 The matrix examples compare every output to a double-precision CPU
 reference. The fractional cases use the elementwise bound
@@ -90,11 +91,21 @@ negative tail. The elementwise tolerance was
 checked output signs. GPU and host guards stayed intact. Empty,
 mismatched, NaN, and infinite inputs were rejected before submission.
 
+Each vector-multiply invocation compared fifteen GPU vectors with
+independent double-precision CPU products rounded to FP32 with
+round-to-nearest, ties-to-even. The tests verified signed zeros,
+subnormal ties and three expected signed-infinity results per run.
+Before FP32 rounding, the largest finite absolute difference was
+`5.0706e30` near `FLT_MAX`, and the largest for mixed inputs was
+`9.18066e-7`. Each card passed six `C=A` cases and six `C=B` cases.
+GPU and host output guards stayed intact. Empty, mismatched, and
+nonfinite inputs were rejected before GPU submission.
+
 ## Scope and reproduction
 
 These results cover direct Linux AMDGPU DRM execution on the listed
 cards. They exercise device discovery, GEM allocation and mapping,
-compute submission, fences and readback for vector add, GEMV, GEMM, Softmax, RMSNorm, RoPE and SiLU.
+compute submission, fences and readback for vector add, vector multiply, GEMV, GEMM, Softmax, RMSNorm, RoPE and SiLU.
 RDNA and Vega hardware execution and other operations are outside this
 validation.
 
