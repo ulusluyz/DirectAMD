@@ -12,7 +12,7 @@ namespace DirectAMD {
 
 std::unique_ptr<BufferObject> BufferObject::create(Device& device, VAManager& va_mgr,
                                                    size_t size_bytes, uint32_t domain_flags,
-                                                   std::error_code& ec) {
+                                                   std::error_code& ec, bool host_access) {
     int fd = device.get_fd();
     if (fd < 0) {
         ec = make_error_code(ErrorCode::DEVICE_NOT_FOUND);
@@ -27,7 +27,7 @@ std::unique_ptr<BufferObject> BufferObject::create(Device& device, VAManager& va
     alloc_args.in.bo_size = page_aligned_size;
     alloc_args.in.alignment = 4096;
     alloc_args.in.domains = domain_flags;
-    alloc_args.in.domain_flags = AMDGPU_GEM_CREATE_CPU_ACCESS_REQUIRED;
+    alloc_args.in.domain_flags = host_access ? AMDGPU_GEM_CREATE_CPU_ACCESS_REQUIRED : 0;
 
     if (ioctl(fd, DRM_IOCTL_AMDGPU_GEM_CREATE, &alloc_args) < 0) {
         ec = make_error_code(ErrorCode::MEMORY_ALLOCATION_FAILED);
@@ -41,7 +41,7 @@ std::unique_ptr<BufferObject> BufferObject::create(Device& device, VAManager& va
     mmap_args.in.handle = handle;
     void* cpu_ptr = nullptr;
 
-    if (ioctl(fd, DRM_IOCTL_AMDGPU_GEM_MMAP, &mmap_args) == 0) {
+    if (host_access && ioctl(fd, DRM_IOCTL_AMDGPU_GEM_MMAP, &mmap_args) == 0) {
         cpu_ptr = mmap(NULL, page_aligned_size, PROT_READ | PROT_WRITE, MAP_SHARED,
                        fd, mmap_args.out.addr_ptr);
         if (cpu_ptr == MAP_FAILED) {

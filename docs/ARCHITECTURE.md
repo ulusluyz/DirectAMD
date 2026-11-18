@@ -144,3 +144,31 @@ DirectAMD is an experimental, standalone C++20 low-level runtime designed for di
 * **No Hidden Fallbacks:** If a GPU call or device node is missing, the system strictly returns explicit device errors (`DEVICE_NOT_FOUND`, `HARDWARE_UNAVAILABLE`). CPU fallback is never passed off as GPU execution.
 * **Warning-Clean Build:** Compiled with `-Wall -Wextra -Wpedantic -Werror`.
 * **Resource Safety:** Deterministic cleanup via RAII wrappers (`DeviceFd`, `ContextHandle`, `BufferObject`).
+
+## Local Qwen2 inference and GGUF conversion
+
+Python 3 standard-library orchestration in `llm/directamd_llm/` drives the
+C++ C ABI in `src/llm/gpu_bridge.cpp`. The backend reuses all eight gfx803
+kernels for embeddings, RMSNorm, half-split RoPE, Q/K/V projections, causal
+GQA attention, SwiGLU, residuals and logits. CPU work is limited to model
+I/O/conversion, tokenizer/chat formatting, shape/phase preparation and greedy
+token selection; Transformer numerical operations execute through AMDGPU/DRM.
+
+Weights and per-layer/per-KV-head cache use persistent device-local VRAM BOs.
+Activations, bounded upload buffers and readbacks use GTT. VRAM weights are
+not CPU-mapped, avoiding Polaris's 256 MiB visible-BAR limitation. Existing
+vector-add with a zero operand performs staged transfers. Guards are checked
+through GPU readback. Shape, view, memory-budget and fence failures return
+explicit errors. Each primitive still submits and waits synchronously.
+
+`directamd-convert` is a separate CPU-only local-file application. Its checked
+GGUF directory reader maps Qwen2 names and fastest-first dimensions to
+row-major SafeTensors. Bounded native chunks decode F32/F16/Q4_K/Q6_K to FP16.
+Unknown types, invalid shapes/offsets, nonfinite values and FP16 overflow are
+rejected. An INCOMPLETE marker prevents loading unfinished output. Tokenizer
+and model metadata are extracted locally; model files are never downloaded.
+
+See [LLM usage](LLM.md), [conversion and memory limits](GGUF_CONVERSION.md),
+[real hardware validation](GGUF_VALIDATION.md) and the
+[pre-publication report](LLM_RELEASE_VALIDATION.md). No dispatch/GEMV
+performance optimization is part of this release.

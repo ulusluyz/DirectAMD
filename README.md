@@ -49,7 +49,7 @@ AMD GPU Hardware (Compute Ring / CUs)
   - GEM Buffer Object VRAM/GTT Manager & 48-bit Virtual Address Manager implemented.
   - PM4 Compute Dispatch Command Packet Builder implemented.
   - CPU Reference Vector-Add and Test Suite validated.
-* **Hardware execution:** Direct DRM FP32 vector addition and multiplication, GEMV, GEMM, Softmax, RMSNorm, RoPE and SiLU passed on the Radeon RX 570 and RX 580 (Polaris 10 / GCN4 / `gfx803`). All five CTest host tests passed in the same build. See the [validation report](docs/FINAL_VALIDATION_REPORT.md).
+* **Hardware execution:** Direct DRM FP32 vector addition and multiplication, GEMV, GEMM, Softmax, RMSNorm, RoPE and SiLU passed on the Radeon RX 570 and RX 580 (Polaris 10 / GCN4 / `gfx803`). The current CTest suite has seven passing targets. See the [validation report](docs/FINAL_VALIDATION_REPORT.md).
 
 ---
 
@@ -66,6 +66,7 @@ AMD GPU Hardware (Compute Ring / CUs)
 * **Compiler:** C++20 compliant compiler (GCC >= 11 or Clang >= 13)
 * **Build System:** CMake >= 3.20
 * **Headers:** DRM kernel headers (`<drm/amdgpu_drm.h>`)
+* **LLM/converter frontend:** Python >= 3.9 and the PCRE2 8-bit runtime (`libpcre2-8-0` on Debian)
 
 ---
 
@@ -249,3 +250,36 @@ See [SECURITY.md](SECURITY.md) for security policy and vulnerability reporting.
 
 ## License
 DirectAMD is released under the [MIT License](LICENSE).
+
+
+## Qwen2 inference and model conversion
+
+The `directamd-llm` build target connects the FP32 GPU primitives to a
+Qwen2 Transformer with persistent VRAM weights and KV cache, a checked
+SafeTensors reader, Qwen byte-level BPE, serial prefill and greedy decode.
+See [the local inference guide](docs/LLM.md) for the CLI, supported
+configuration and validation scope.
+
+`directamd-convert` converts local Qwen2 GGUF F32/F16/Q4_K/Q6_K weights
+to FP16 SafeTensors with bounded RAM use and preserves tokenizer/configuration
+metadata. See [GGUF conversion](docs/GGUF_CONVERSION.md). Inference converts
+weights to FP32 in device-local VRAM using bounded GTT staging.
+
+The local converted Qwen2.5-1.5B model produced the Turkish answer on both
+RX 570 and RX 580. See [measured validation](docs/GGUF_VALIDATION.md).
+The 64-token upper-bound request ended normally at EOS after 11 tokens.
+
+On Debian, install the build/frontend dependencies with
+`sudo apt install build-essential cmake libdrm-dev python3 libpcre2-8-0`.
+No Python packages or model downloads are required by the runtime.
+
+```bash
+./build/directamd-convert --input /local/model.gguf --output /local/model-fp16
+./build/directamd-llm --model /local/model-fp16 \
+  --device /dev/dri/renderD128 --prompt "Türkiye'nin başkenti neresidir?" \
+  --context-length 160 --max-tokens 64 --memory-mib 7400
+```
+
+The conversion output directory must be new. GGUF and SafeTensors model weights
+are excluded from Git. See the [pre-publication results](docs/LLM_RELEASE_VALIDATION.md)
+for current reruns and the distinction between host, synthetic and trained-model tests.

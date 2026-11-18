@@ -30,3 +30,21 @@ compile_commands.json
 *.bin
 *.safetensors
 *.gguf
+
+# Local model assets, training artifacts and Python caches
+/models/
+/weights/
+/checkpoints/
+/datasets/
+/outputs/
+/work/
+__pycache__/
+*.py[cod]
+*.pt
+*.pth
+*.ckpt
+*.ggml
+*.onnx
+*.npz
+*.trace
+Testing/

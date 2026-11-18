@@ -1,0 +1,5 @@
+#!@Python3_EXECUTABLE@
+import sys
+sys.path.insert(0, "@CMAKE_CURRENT_SOURCE_DIR@/llm")
+from directamd_llm.convert import main
+raise SystemExit(main("@CMAKE_BINARY_DIR@/llm/libdirectamd_gguf_decode.so"))

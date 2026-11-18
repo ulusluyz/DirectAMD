@@ -28,7 +28,7 @@ class BufferObject {
 public:
     static std::unique_ptr<BufferObject> create(Device& device, VAManager& va_mgr,
                                                 size_t size_bytes, uint32_t domain_flags,
-                                                std::error_code& ec);
+                                                std::error_code& ec, bool host_access = true);
 
     ~BufferObject();
 

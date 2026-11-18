@@ -41,6 +41,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Validated bitwise FP32 rounding, both output aliases, and the seven
   existing GPU workloads on Radeon RX 570 and RX 580.
 
+- Added the local Qwen2 FP32 inference engine, `directamd-llm`, checked
+  SafeTensors loading, Qwen byte-level BPE/chat formatting, persistent VRAM
+  weights, causal GQA KV cache, serial prefill and greedy EOS-aware decode.
+- Added the bounded-memory `directamd-convert` GGUF v2/v3 Qwen2 converter
+  for F32, F16, Q4_K and Q6_K tensors, producing FP16 SafeTensors and
+  tokenizer/model configuration without downloading model assets.
+- Added device-local VRAM allocation and bounded GTT staging for LLM weights,
+  preserving host-accessible allocation defaults for the existing eight kernels.
+- Added converter/loader host tests, synthetic CPU/GPU Transformer checks and
+  an optional double-precision trained-model verification tool.
+- Verified the converted local Qwen2.5-1.5B-Instruct model on RX 570 and RX 580.
+  Both answered the Turkish capital question; the 64-token upper bound stopped
+  normally at EOS after 11 tokens. See the hardware and release reports.
+- Recorded slow synchronous GEMV/prefill performance; synchronization and
+  GEMV optimizations remain future work.
+
 ## [0.1.0] - 2026-10-05
 
 ### Added

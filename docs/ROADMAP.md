@@ -30,6 +30,15 @@
 - [x] FP32 SiLU on Polaris 10, verified on RX 570 and RX 580
 
 ### Stage 4: Transformer LLM Inference Subsystem
-- [ ] Memory Allocation for Transformer Weights & KV Cache
-- [ ] Token Embeddings, Attention, Causal Masking, SwiGLU MLP
-- [ ] Autoregressive Token Generation Pipeline
+- [x] Persistent VRAM allocation for Transformer weights and causal GQA KV cache
+- [x] GPU token embeddings, causal GQA attention and SwiGLU MLP using the existing primitives
+- [x] Serial prefill and greedy autoregressive decode with EOS handling
+- [x] Local Qwen2 SafeTensors/configuration and byte-level BPE/chat loading
+- [x] Streaming Qwen2 GGUF F32/F16/Q4_K/Q6_K to FP16 SafeTensors conversion
+- [x] Real converted Qwen2.5-1.5B Turkish response on RX 570 and RX 580
+- [ ] Full 64-token real-model continuation validation (the tested question reached EOS at 11)
+
+### Stage 5: Inference Performance (not started)
+- [ ] Reduce primitive dispatch and fence overhead
+- [ ] Improve GEMV throughput and serial prefill latency
+- [ ] Revalidate numerical accuracy, memory bounds and existing GPU operations after optimization

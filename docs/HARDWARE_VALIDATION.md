@@ -60,3 +60,11 @@ inputs. Vector multiplication compares each result bitwise with a
 double-precision CPU product rounded to FP32 and checks both output
 aliases, signed zeros, subnormal rounding and overflow. A submission, fence or readback failure exits nonzero.
 Record GPU execution as untested if there is no usable render node.
+
+## Real Qwen2.5-1.5B inference
+
+The converted local model generated `Türkiye'nin başkenti Ankara'dır.` on
+RX 570 and RX 580 with direct AMDGPU/DRM computation. The 64-token upper
+bound ended normally at EOS after 11 tokens. See [the detailed model report](GGUF_VALIDATION.md)
+and [pre-publication rerun](LLM_RELEASE_VALIDATION.md). These measurements
+are separate from the synthetic 64-token fixture and host CTest.
